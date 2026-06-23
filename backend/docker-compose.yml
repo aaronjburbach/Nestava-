@@ -1,0 +1,12 @@
+# Local Postgres with PostGIS + pgvector for development.
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: nestava
+      POSTGRES_PASSWORD: nestava
+      POSTGRES_DB: nestava
+    ports: ["5432:5432"]
+    volumes: ["nestava_pg:/var/lib/postgresql/data"]
+volumes:
+  nestava_pg:

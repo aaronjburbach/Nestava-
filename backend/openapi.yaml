@@ -1,0 +1,19 @@
+openapi: 3.0.3
+info: { title: Nestava API, version: 0.1.0, description: Multi-tenant real-estate intelligence API. Bearer (Clerk JWT) auth; all /v1 routes are org-scoped via Postgres RLS. }
+servers: [{ url: https://api.nestava.app }]
+security: [{ bearerAuth: [] }]
+paths:
+  /health: { get: { security: [], summary: Liveness, responses: { "200": { description: ok } } } }
+  /v1/dd/run: { post: { summary: Run DD on an address (assembles AVM/flood/permits/title/schools/climate), responses: { "200": { description: property } } } }
+  /v1/reports/buyer-defense: { post: { summary: Generate + persist a Buyer Defense Report, responses: { "200": { description: report } } } }
+  /v1/reports/{id}/html: { get: { summary: Report HTML (PDF source), responses: { "200": { description: html } } } }
+  /v1/contacts: { get: { summary: List contacts }, post: { summary: Create contact } }
+  /v1/contacts/{id}/enroll: { post: { summary: Enroll in sequence (TCPA-gated), responses: { "422": { description: consent/DNC block } } } }
+  /v1/marketing/generate: { post: { summary: Generate asset (Fair-Housing checked), responses: { "422": { description: fair housing risk } } } }
+  /v1/sites: { get: { summary: List sites }, post: { summary: Create site } }
+  /v1/prospect: { get: { summary: Seller leads } }
+  /v1/prospect/{id}/skiptrace: { post: { summary: Skip trace (DNC-respected) } }
+  /v1/mortgage/scenario: { post: { summary: Compute payment/afford/refi/DSCR } }
+  /v1/transactions: { get: { summary: Transactions + compliance findings } }
+  /v1/keys: { get: { summary: List API keys }, post: { summary: Create API key } }
+components: { securitySchemes: { bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT } } }

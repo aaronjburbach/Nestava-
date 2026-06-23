@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Nestava Suite — Real Estate Platform</title>
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin/>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+ --bg:#F7F6F0; --bg2:#FBFAF6; --fg:#1A1A14; --muted:#6E6E62; --muted2:#9C9C8E;
+ --line:#E8E4D8; --line2:#F0EDE4; --card:#FFFFFF;
+ --teal:#0F4C46; --teal600:#15655C; --teal-tint:#E7F1EF; --teal-tint2:#EFF5F3;
+ --amber:#C2792E; --amber-tint:#F6ECDD;
+ --good:#2F7D55; --good-bg:#E7F2EA; --warn:#B5701F; --warn-bg:#F7EEDD; --danger:#B23B3B; --danger-bg:#F7E8E6;
+ --radius:14px; --radius-sm:10px;
+ --shadow:0 1px 2px rgba(26,26,20,.04),0 6px 18px rgba(26,26,20,.05);
+ --shadow-lg:0 20px 50px rgba(15,76,70,.16);
+ --f: "General Sans", ui-sans-serif, system-ui, sans-serif;
+ --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--f);background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;line-height:1.5;font-size:14px}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:14px;color:var(--fg)}
+::selection{background:var(--teal);color:#fff}
+.mono{font-family:var(--mono)}
+
+.app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+
+/* sidebar (light) */
+.sidebar{background:var(--bg2);border-right:1px solid var(--line);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;padding:14px 12px}
+.org{display:flex;align-items:center;gap:10px;padding:8px 8px 6px;border-radius:10px;cursor:pointer}
+.org:hover{background:#fff}
+.mark{width:34px;height:34px;flex:0 0 34px;border-radius:9px;background:var(--teal);display:flex;align-items:center;justify-content:center}
+.org .nm{font-weight:600;font-size:14px;letter-spacing:-.01em}
+.org .sub{font-size:11.5px;color:var(--muted)}
+.org .chev{margin-left:auto;color:var(--muted2)}
+.nav{display:flex;flex-direction:column;gap:1px;margin-top:12px}
+.nav .lbl{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted2);padding:14px 10px 6px;font-weight:600}
+.nav a{display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:9px;color:#43433a;font-size:14px;font-weight:500;cursor:pointer;transition:.13s}
+.nav a svg{width:18px;height:18px;color:var(--muted);flex:0 0 18px}
+.nav a:hover{background:#fff;color:var(--fg)}
+.nav a.active{background:var(--teal-tint);color:var(--teal)}
+.nav a.active svg{color:var(--teal)}
+.nav a .dot{margin-left:auto;width:6px;height:6px;border-radius:50%;background:var(--teal)}
+.side-foot{margin-top:auto;display:flex;flex-direction:column;gap:4px;padding-top:10px;border-top:1px solid var(--line)}
+.side-foot .lk{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;color:var(--muted);font-size:13px;cursor:pointer}
+.side-foot .lk:hover{background:#fff;color:var(--fg)}
+.side-foot .lk svg{width:17px;height:17px}
+.side-foot .who{display:flex;align-items:center;gap:10px;padding:8px 10px}
+.side-foot .ava{width:30px;height:30px;border-radius:8px;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px}
+.side-foot .who .n{font-size:13px;font-weight:600}
+.side-foot .who .r{font-size:11px;color:var(--muted)}
+
+/* main */
+.main{display:flex;flex-direction:column;min-width:0}
+.topbar{height:60px;background:rgba(247,246,240,.82);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 24px;position:sticky;top:0;z-index:20}
+.crumb{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;white-space:nowrap}
+.crumb .c1{color:var(--muted)}
+.crumb .sep{color:var(--muted2)}
+.crumb .c2{color:var(--fg);font-weight:600}
+.searchbar{flex:1;max-width:440px;display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--muted)}
+.searchbar svg{width:16px;height:16px;flex:0 0 16px}
+.searchbar input{border:none;outline:none;background:none;width:100%}
+.searchbar .kbd{font-family:var(--mono);font-size:11px;color:var(--muted2);border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:12px}
+.proto{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--amber);border:1px solid var(--amber);border-radius:20px;padding:5px 11px;background:var(--amber-tint)}
+.whatsnew{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer}
+.whatsnew .gd{width:7px;height:7px;border-radius:50%;background:var(--good)}
+.iconbtn{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--muted);position:relative}
+.iconbtn:hover{background:#fff;color:var(--fg)}
+.iconbtn svg{width:18px;height:18px}
+.iconbtn .nd{position:absolute;top:7px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--danger)}
+
+.content{padding:28px 30px 70px;max-width:1240px;width:100%;margin:0 auto}
+.view{display:none;animation:rise .35s ease}
+.view.active{display:block}
+@keyframes rise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+
+/* headings */
+.ph{margin-bottom:22px}
+.ph .dt{font-size:13px;color:var(--muted);margin-bottom:5px}
+.ph h1{font-size:27px;font-weight:600;letter-spacing:-.02em}
+.ph p{color:var(--muted);font-size:14px;margin-top:6px;max-width:640px}
+.ph.row{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;font-weight:600;font-size:13.5px;padding:9px 15px;transition:.14s;white-space:nowrap;border:1px solid transparent}
+.btn svg{width:16px;height:16px}
+.btn-pri{background:var(--teal);color:#fff}
+.btn-pri:hover{background:var(--teal600)}
+.btn-amber{background:var(--amber);color:#fff}
+.btn-amber:hover{filter:brightness(1.05)}
+.btn-ghost{background:#fff;border-color:var(--line);color:var(--fg)}
+.btn-ghost:hover{border-color:var(--muted2)}
+.btn-sm{padding:6px 11px;font-size:12.5px;border-radius:8px}
+
+/* cards / grid */
+.grid{display:grid;gap:16px}
+.c4{grid-template-columns:repeat(4,1fr)}
+.c3{grid-template-columns:repeat(3,1fr)}
+.c2{grid-template-columns:1.5fr 1fr}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.cp{padding:18px}
+.stat .top{display:flex;align-items:flex-start;justify-content:space-between}
+.stat .k{font-size:13px;color:var(--muted);font-weight:500}
+.stat .v{font-size:26px;font-weight:600;letter-spacing:-.02em;margin-top:10px}
+.stat .delta{font-size:12.5px;font-weight:600;color:var(--good);display:inline-flex;align-items:center;gap:3px;margin-top:6px}
+.stat .delta.flat{color:var(--muted)}
+.stat .ic{width:32px;height:32px;border-radius:8px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center}
+.stat .ic svg{width:17px;height:17px;color:var(--teal)}
+.sec-t{font-size:15px;font-weight:600;display:flex;align-items:center;gap:9px;margin-bottom:14px}
+.sec-t .mut{font-weight:500;color:var(--muted);font-size:13px}
+.sec-t .link{margin-left:auto;font-size:13px;color:var(--teal);font-weight:600;cursor:pointer}
+
+.row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line2)}
+.row:first-child{border-top:none}
+.av{width:36px;height:36px;border-radius:9px;flex:0 0 36px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;color:#fff;background:var(--teal)}
+.av.am{background:var(--amber)} .av.gy{background:#fff;color:var(--muted);border:1px solid var(--line)}
+.row .meta{min-width:0;flex:1}
+.row .meta .t{font-weight:600;font-size:13.5px}
+.row .meta .s{font-size:12.5px;color:var(--muted);margin-top:1px}
+.row .end{margin-left:auto;text-align:right;white-space:nowrap}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:20px}
+.badge.green{background:var(--good-bg);color:var(--good)} .badge.amber{background:var(--warn-bg);color:var(--warn)}
+.badge.red{background:var(--danger-bg);color:var(--danger)} .badge.teal{background:var(--teal-tint);color:var(--teal)}
+.badge.gray{background:#F0EFE8;color:var(--muted)}
+.chip{font-size:12.5px;border:1px solid var(--line);background:#fff;border-radius:20px;padding:6px 12px;cursor:pointer;color:#43433a}
+.chip:hover{border-color:var(--teal);color:var(--teal)}
+
+/* tasks */
+.task{display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid var(--line2);cursor:pointer}
+.task:first-child{border-top:none}
+.tick{width:19px;height:19px;border-radius:6px;border:1.6px solid var(--line);flex:0 0 19px;display:flex;align-items:center;justify-content:center}
+.task.done .tick{background:var(--teal);border-color:var(--teal)}
+.task.done .tick svg{display:block}.tick svg{display:none;width:12px;height:12px;color:#fff}
+.task.done .tt{text-decoration:line-through;color:var(--muted2)}
+.task .tt{flex:1;font-size:13.5px}
+.task .tm{font-size:11.5px;color:var(--muted);background:#F0EFE8;border-radius:6px;padding:2px 7px;font-weight:500}
+
+/* spark */
+.spark{height:120px;width:100%}
+
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:18px;overflow-x:auto}
+.tabs button{padding:10px 14px;font-size:13.5px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button.active{color:var(--teal);border-bottom-color:var(--teal)}
+.subtab{display:none}.subtab.active{display:block;animation:rise .3s ease}
+
+/* DD property */
+.dd-search{display:flex;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+.dd-search .in{flex:1;display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+.dd-search .in svg{width:17px;height:17px;color:var(--muted)}
+.dd-search .in input{border:none;outline:none;background:none;width:100%;font-size:14.5px}
+.propcard .ph-img{height:188px;border-radius:12px;background:linear-gradient(135deg,#cdd8d3,#aebfb8);position:relative;overflow:hidden}
+.propcard .ph-img svg{position:absolute;inset:0;margin:auto;width:60px;height:60px;color:#ffffff88}
+.facts2{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.facts2 .f{border:1px solid var(--line);border-radius:10px;padding:10px 11px;text-align:center;background:var(--bg2)}
+.facts2 .f .v{font-weight:600;font-size:15px} .facts2 .f .k{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+.avm{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.avm .a{border:1px solid var(--line);border-radius:12px;padding:15px}
+.avm .a.best{border-color:var(--teal);background:var(--teal-tint2)}
+.avm .a .src{font-size:12px;color:var(--muted);font-weight:500}
+.avm .a .val{font-size:23px;font-weight:600;margin-top:6px;letter-spacing:-.02em}
+.avm .a .band{font-size:11.5px;color:var(--muted);margin-top:3px}
+.bandbar{height:7px;border-radius:6px;background:var(--line);position:relative;margin-top:8px}
+.bandbar .fill{position:absolute;height:100%;border-radius:6px;background:var(--teal600);opacity:.5}
+.bandbar .mk{position:absolute;top:-3px;width:3px;height:13px;border-radius:3px;background:var(--teal)}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line)}
+.tbl td{padding:10px;border-bottom:1px solid var(--line2)}
+.tbl tr:last-child td{border-bottom:none}
+.tbl .pos{color:var(--good)} .tbl .neg{color:var(--danger)}
+.insight{display:flex;gap:12px;padding:14px;border:1px solid var(--line);border-radius:12px}
+.insight .ii{width:34px;height:34px;border-radius:9px;flex:0 0 34px;display:flex;align-items:center;justify-content:center}
+.insight .it{font-weight:600;font-size:13.5px} .insight .id{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.5}
+.insight .isrc{font-size:11px;color:var(--muted2);margin-top:6px;font-family:var(--mono)}
+.permit{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line2)}
+.permit:first-child{border-top:none}
+.pdot{width:9px;height:9px;border-radius:50%;flex:0 0 9px}
+
+/* report */
+.rep{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-lg);overflow:hidden}
+.rep .band{background:linear-gradient(120deg,#0F4C46,#15655C);color:#fff;padding:22px 26px;display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.rep .band .rk{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:#a7ccc4;font-weight:600}
+.rep .band h2{font-size:22px;font-weight:600;margin-top:5px}
+.rep .band .sb{color:#bcd7d0;font-size:13px;margin-top:3px}
+.rep .band .ag{text-align:right;font-size:12.5px;line-height:1.5}
+.rep .band .ag .n{font-weight:600;font-size:14px}.rep .band .ag .am{color:var(--amber);font-weight:600}
+.rep .body{padding:22px 26px}
+.scorewrap{display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding-bottom:18px;border-bottom:1px solid var(--line2)}
+.ring{width:92px;height:92px;flex:0 0 92px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#fff}
+.ring .n{font-size:27px;font-weight:600;line-height:1}.ring .l{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.92;margin-top:2px}
+.repfoot{padding:15px 26px;background:var(--bg2);border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);line-height:1.6}
+
+/* generic tiles */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.tile{border:1px solid var(--line);border-radius:12px;padding:16px;background:#fff;cursor:pointer;transition:.14s}
+.tile:hover{border-color:var(--teal);transform:translateY(-2px);box-shadow:var(--shadow)}
+.tile .ti{width:34px;height:34px;border-radius:9px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;margin-bottom:11px}
+.tile .ti svg{width:18px;height:18px;color:var(--teal)}
+.tile h4{font-size:14px;font-weight:600}.tile p{font-size:12.5px;color:var(--muted);margin-top:3px}
+.tile .meta{font-size:11.5px;color:var(--teal);font-weight:600;margin-top:8px}
+
+/* theme cards */
+.themes{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.theme{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;cursor:pointer;transition:.14s}
+.theme:hover{border-color:var(--teal);box-shadow:var(--shadow);transform:translateY(-2px)}
+.theme .sw{height:74px;display:flex}
+.theme .sw span{flex:1}
+.theme .tb{padding:11px 13px}
+.theme .tb h5{font-size:13.5px;font-weight:600}.theme .tb p{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.45}
+
+/* mortgage */
+.mtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.mtabs button{font-size:13px;font-weight:600;padding:8px 14px;border-radius:9px;background:#fff;border:1px solid var(--line);color:var(--muted)}
+.mtabs button.active{background:var(--teal);color:#fff;border-color:var(--teal)}
+.field{margin-bottom:12px}.field label{display:block;font-size:12.5px;font-weight:500;color:var(--muted);margin-bottom:6px}
+.field input,.field select{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:#fff}
+.field input:focus,.field select:focus{outline:none;border-color:var(--teal)}
+.payout{background:linear-gradient(140deg,#0F4C46,#15655C);border-radius:13px;padding:22px;color:#fff;text-align:center}
+.payout .pl{font-size:12px;color:#a7ccc4;text-transform:uppercase;letter-spacing:.09em;font-weight:600}
+.payout .pv{font-size:38px;font-weight:600;letter-spacing:-.02em;margin:6px 0}.payout .pb{font-size:12.5px;color:#bcd7d0}
+.bd{display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line2);font-size:13.5px}
+.bd .kk{color:var(--muted)}.bd .vv{font-weight:600}
+.copilot{border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;height:380px;overflow:hidden}
+.copilot .msgs{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.bub{max-width:82%;padding:10px 13px;border-radius:12px;font-size:13.5px;line-height:1.5}
+.bub.u{align-self:flex-end;background:var(--teal);color:#fff;border-bottom-right-radius:4px}
+.bub.a{align-self:flex-start;background:var(--bg2);border:1px solid var(--line);border-bottom-left-radius:4px}
+.copilot .inp{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
+.copilot .inp input{flex:1;border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+
+/* progress */
+.prog{height:8px;border-radius:6px;background:var(--line);overflow:hidden}
+.prog i{display:block;height:100%;background:var(--teal);border-radius:6px;transition:width .4s}
+.review{display:flex;gap:11px;padding:12px;border:1px solid var(--line);border-radius:11px;margin-top:10px}
+.review .ri{width:26px;height:26px;border-radius:7px;flex:0 0 26px;display:flex;align-items:center;justify-content:center}
+.note{font-size:12px;color:var(--muted2);background:var(--bg2);border:1px dashed var(--line);border-radius:9px;padding:9px 12px;display:flex;gap:8px;align-items:center;margin-top:14px}
+.note svg{width:15px;height:15px;color:var(--amber);flex:0 0 15px}
+.keyrow{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:10px;margin-top:10px;font-family:var(--mono);font-size:12.5px}
+
+/* collapse to icon rail (wide screens) */
+.app.collapsed{grid-template-columns:74px 1fr}
+.app.collapsed .org .nm,.app.collapsed .org .sub,.app.collapsed .org .chev,.app.collapsed .nav .lbl,.app.collapsed .lbl-t,.app.collapsed .nav a .dot,.app.collapsed .side-foot .who>div:last-child,.app.collapsed .side-foot .lk span{display:none}
+.app.collapsed .nav a,.app.collapsed .org,.app.collapsed .side-foot .who,.app.collapsed .side-foot .lk{justify-content:center}
+
+/* narrow: sidebar becomes an always-visible top nav (never hidden) */
+@media(max-width:980px){
+ .app,.app.collapsed{grid-template-columns:1fr}
+ .sidebar{position:static;height:auto;flex-direction:row;align-items:center;gap:6px;overflow-x:auto;border-right:none;border-bottom:1px solid var(--line);padding:8px 10px}
+ .org{flex:0 0 auto;padding:6px 8px}.org .sub,.org .chev{display:none}
+ .nav{flex-direction:row;margin-top:0;gap:2px;flex:1;flex-wrap:nowrap}
+ .nav .lbl{display:none}.nav a{white-space:nowrap;padding:8px 11px}.nav a .dot{display:none}
+ .side-foot{display:none}
+ .topbar{padding:0 14px}.searchbar,.proto,.whatsnew{display:none}
+ .content{padding:18px 14px 64px}
+ .c4,.themes{grid-template-columns:repeat(2,1fr)}.c3,.tiles,.avm{grid-template-columns:1fr}.c2{grid-template-columns:1fr}
+ .facts2{grid-template-columns:repeat(3,1fr)}
+ .grid[style*="340px"],.grid[style*="330px"]{grid-template-columns:1fr!important}
+ [style*="repeat(5,1fr)"]{grid-template-columns:repeat(2,1fr)!important}
+ .copilot{height:320px}
+}
+@media(max-width:560px){.c4,.themes{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+ <aside class="sidebar" id="sidebar">
+  <div class="org">
+   <div class="mark"><svg width="20" height="20" viewBox="0 0 32 32" fill="none"><path d="M10 21 L16 11 L22 21" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="23.5" r="1.6" fill="#C2792E"/></svg></div>
+   <div><div class="nm">Carolina Coast Realty</div><div class="sub">Brokerage</div></div>
+   <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg>
+  </div>
+  <nav class="nav" id="nav">
+   <a data-view="dashboard" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Dashboard<span class="dot"></span></a>
+   <a data-view="dd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3v4a1 1 0 001 1h4"/><path d="M5 3h9l5 5v11a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/><path d="M9 13l2 2 4-4"/></svg>Nestava DD</a>
+   <a data-view="crm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0112 0"/><path d="M16 4a3 3 0 010 8"/><path d="M21 20a6 6 0 00-5-5.9"/></svg>CRM</a>
+   <a data-view="marketing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l15-6v14L3 13z"/><path d="M3 11v2a3 3 0 003 3"/></svg>Marketing</a>
+   <a data-view="sites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18"/></svg>Sites</a>
+   <a data-view="prospect"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/></svg>Prospect</a>
+   <a data-view="mortgage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>Mortgage</a>
+   <a data-view="transact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3v4a1 1 0 001 1h4"/><path d="M5 3h9l5 5v11a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/><path d="M9 14l2 2 4-4"/></svg>Transact</a>
+   <div class="lbl">Settings</div>
+   <a data-view="developer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 9l-4 3 4 3M16 9l4 3-4 3M13 5l-2 14"/></svg>Developer</a>
+  </nav>
+  <div class="side-foot">
+   <div class="lk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 6l-6 6 6 6"/></svg>Collapse</div>
+   <div class="who"><div class="ava">DW</div><div><div class="n">Dana Whitfield</div><div class="r">Managing Broker</div></div></div>
+  </div>
+ </aside>
+
+ <div class="main">
+  <div class="topbar">
+   <button class="iconbtn" onclick="document.getElementById('sidebar').classList.toggle('open')" style="display:none" id="mbtn">☰</button>
+   <div class="crumb"><span class="c1">Nestava</span><span class="sep">/</span><span class="c2" id="crumb">Dashboard</span></div>
+   <div class="searchbar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input placeholder="Search addresses, contacts, reports…"/><span class="kbd">⌘K</span></div>
+   <div class="top-r">
+    <div class="proto"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 2l2.4 7.4H22l-6 4.4 2.3 7.2L12 16.8 5.7 21l2.3-7.2-6-4.4h7.6z"/></svg>Prototype — Not for Production</div>
+    <div class="whatsnew" id="whatsNew"><span class="gd"></span>What's new</div>
+    <button class="iconbtn" id="fsBtn" title="Toggle fullscreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button class="iconbtn" id="bellBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="nd"></span></button>
+   </div>
+  </div>
+  <div class="content" id="content">
+
+  <!-- DASHBOARD -->
+  <section class="view active" id="view-dashboard">
+   <div class="ph"><div class="dt" id="todayDate">Monday, June 22</div><h1>Good morning, Dana.</h1><p>You have <b id="taskCount">4</b> open tasks today and 4 reports awaiting client delivery.</p></div>
+   <div class="grid c4" style="margin-bottom:16px">
+    <div class="card cp stat"><div class="top"><div><div class="k">Active Listings</div></div><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-7h6v7"/></svg></div></div><div class="v">18</div><div class="delta">↗ +3</div></div>
+    <div class="card cp stat"><div class="top"><div><div class="k">Pipeline Value</div></div><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></div></div><div class="v">$6.4M</div><div class="delta">↗ +12.1%</div></div>
+    <div class="card cp stat"><div class="top"><div><div class="k">This Month Closings</div></div><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 13l4 4L19 7"/></svg></div></div><div class="v">5</div><div class="delta">↗ +1</div></div>
+    <div class="card cp stat"><div class="top"><div><div class="k">Buyer Defense Reports Sent</div></div><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3h9l5 5v11a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/><path d="M9 13l2 2 4-4"/></svg></div></div><div class="v">127</div><div class="delta">↗ +22</div></div>
+   </div>
+   <div class="card cp" style="margin-bottom:16px">
+    <div class="sec-t">Buyer Defense Reports sent <span class="mut">· Last 30 days · 268 total</span><span class="badge green" style="margin-left:auto">+18% vs prior 30d</span></div>
+    <svg class="spark" viewBox="0 0 800 120" preserveAspectRatio="none"><defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0F4C46" stop-opacity=".18"/><stop offset="1" stop-color="#0F4C46" stop-opacity="0"/></linearGradient></defs><path id="sparkArea" fill="url(#sg)"/><path id="sparkLine" fill="none" stroke="#0F4C46" stroke-width="2.2"/></svg>
+   </div>
+   <div class="grid c2">
+    <div class="card cp">
+     <div class="sec-t">Today's tasks <span class="link" id="openCount">4 open</span></div>
+     <div id="taskList"></div>
+    </div>
+    <div class="card cp">
+     <div class="sec-t">Recent reports <span class="link" data-view="dd">View all</span></div>
+     <div id="recentReports"></div>
+    </div>
+   </div>
+  </section>
+  <!-- NESTAVA DD -->
+  <section class="view" id="view-dd">
+   <div id="ddMain">
+    <div class="ph"><h1>Nestava DD</h1><p>Instant institutional-grade due diligence on any address — valuation, permits, hazards, title, and AI risk summary.</p></div>
+    <div class="dd-search">
+     <div class="in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="ddInput" value="1234 Oak St, Wilmington, NC"/></div>
+     <button class="btn btn-pri" id="runDD">Run DD <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin:12px 0 18px;flex-wrap:wrap"><span style="font-size:12.5px;color:var(--muted)">Recent:</span><span class="chip" data-addr="88 Marsh Pointe Dr, Leland NC">88 Marsh Pointe Dr, Leland</span><span class="chip" data-addr="412 Hawthorne Rd, Wilmington NC">412 Hawthorne Rd</span><span class="chip" data-addr="7 Beacon Ct, Carolina Beach NC">7 Beacon Ct, Carolina Beach</span></div>
+    <div class="grid" style="grid-template-columns:340px 1fr;align-items:start">
+     <div class="card cp propcard" id="propCard"></div>
+     <div class="card cp">
+      <div class="tabs" id="ddTabs">
+       <button class="active" data-t="ov">Overview</button><button data-t="avm">AVM &amp; Comps</button><button data-t="perm">Permits</button><button data-t="haz">Hazards</button><button data-t="own">Owner</button><button data-t="rep">Reports</button>
+      </div>
+      <div class="subtab active" id="sub-ov"></div>
+      <div class="subtab" id="sub-avm"></div>
+      <div class="subtab" id="sub-perm"></div>
+      <div class="subtab" id="sub-haz"></div>
+      <div class="subtab" id="sub-own"></div>
+      <div class="subtab" id="sub-rep"></div>
+     </div>
+    </div>
+   </div>
+   <div id="repView" style="display:none"></div>
+  </section>
+  <!-- CRM -->
+  <section class="view" id="view-crm">
+   <div class="ph row"><div><h1>CRM</h1><p>Every lead a report creates lands here automatically — with the property, the report, and the context attached.</p></div><button class="btn btn-pri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Add contact</button></div>
+   <div class="grid" style="grid-template-columns:330px 1fr;align-items:start">
+    <div class="card cp">
+     <div class="searchbar" style="margin-bottom:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="crmFilter" placeholder="Filter contacts…"/></div>
+     <div id="crmList"></div>
+    </div>
+    <div id="crmDetail"></div>
+   </div>
+  </section>
+
+  <!-- MARKETING -->
+  <section class="view" id="view-marketing">
+   <div class="ph"><h1>Marketing</h1><p>Generate, schedule, and track every outbound marketing asset — flyers, social, email, and ads — from one workspace.</p></div>
+   <div class="tiles" style="margin-bottom:20px">
+    <div class="tile"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18"/></svg></div><h4>Landing Pages</h4><p>Single-property &amp; squeeze pages</p><div class="meta">6 published</div></div>
+    <div class="tile"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z"/><path d="M4 14l4-4 5 5 3-3 4 4"/></svg></div><h4>Listing Flyers</h4><p>Branded print + digital</p><div class="meta">12 created</div></div>
+    <div class="tile"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l15-6v14L3 13z"/></svg></div><h4>Social Posts</h4><p>Just-listed, just-sold, open house</p><div class="meta">Auto-posts to 3 channels</div></div>
+    <div class="tile"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></div><h4>Email Campaigns</h4><p>Nurture &amp; newsletters</p><div class="meta">31% open rate</div></div>
+    <div class="tile"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><h4>Ad Manager</h4><p>Meta &amp; Google lead ads</p><div class="meta">4 live · $1.2K spend</div></div>
+    <div class="tile" data-view="sites"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18"/></svg></div><h4>IDX Website</h4><p>Your live MLS-powered site</p><div class="meta">1,204 visits / mo</div></div>
+   </div>
+   <div class="card cp">
+    <div class="sec-t"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2"/></svg>AI Marketing Generator</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px" id="mktChips">
+     <span class="chip" data-k="New listing flyer">New listing flyer</span><span class="chip" data-k="Open house invite">Open house invite</span><span class="chip" data-k="Just-sold post">Just-sold post</span><span class="chip" data-k="Buyer guide">Buyer guide</span><span class="chip" data-k="Absentee owner letter">Absentee owner</span>
+    </div>
+    <textarea id="mktPrompt" rows="2" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;resize:vertical" placeholder="Describe the asset — e.g. 'Just-listed flyer for 1234 Oak St, 4bd/3ba, waterfront, $492K, open house Saturday 1–3pm'">Just-listed flyer for 1234 Oak St — 4bd / 3ba, 2,840 sq ft, low-flood-risk waterfront, $492,000. Open house Saturday 1–3pm.</textarea>
+    <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn btn-amber" id="mktGen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Generate</button></div>
+    <div id="mktOut"></div>
+   </div>
+  </section>
+  <!-- SITES -->
+  <section class="view" id="view-sites">
+   <div class="ph row"><div><h1>Sites</h1><p>Spin up an IDX-powered agent, team, or single-property site from a designer theme — then customize everything in the block editor.</p></div><button class="btn btn-pri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New site</button></div>
+   <div class="sec-t">Your sites</div>
+   <div class="grid c4" style="margin-bottom:24px">
+    <div class="card cp"><div class="badge teal">Live</div><div style="font-weight:600;margin-top:8px">Solo agent</div><div style="font-size:12.5px;color:var(--muted)">Modern minimal · dana.ccr.com</div></div>
+    <div class="card cp"><div class="badge teal">Live</div><div style="font-weight:600;margin-top:8px">Team site</div><div style="font-size:12.5px;color:var(--muted)">Coastal luxury · coastteam.com</div></div>
+    <div class="card cp"><div class="badge amber">Draft</div><div style="font-weight:600;margin-top:8px">Brokerage</div><div style="font-size:12.5px;color:var(--muted)">Multi-agent roster</div></div>
+    <div class="card cp"><div class="badge teal">Live</div><div style="font-weight:600;margin-top:8px">Single property</div><div style="font-size:12.5px;color:var(--muted)">1234 Oak St luxury landing</div></div>
+   </div>
+   <div class="sec-t">Theme gallery <span class="mut">· tuned per market — click to preview</span></div>
+   <div class="themes" id="themeGallery" style="margin-bottom:24px"></div>
+   <div class="sec-t">Embeddable widgets</div>
+   <div class="grid c4">
+    <div class="card cp"><div style="font-weight:600;font-size:13.5px">Home Valuation</div><p style="font-size:12px;color:var(--muted);margin-top:4px">Instant AVM for an email</p><button class="btn btn-ghost btn-sm" style="margin-top:10px">Copy embed code</button></div>
+    <div class="card cp"><div style="font-weight:600;font-size:13.5px">IDX Search</div><p style="font-size:12px;color:var(--muted);margin-top:4px">Embeddable MLS search bar</p><button class="btn btn-ghost btn-sm" style="margin-top:10px">Copy embed code</button></div>
+    <div class="card cp"><div style="font-weight:600;font-size:13.5px">Lead Form</div><p style="font-size:12px;color:var(--muted);margin-top:4px">Capture buyer &amp; seller leads</p><button class="btn btn-ghost btn-sm" style="margin-top:10px">Copy embed code</button></div>
+    <div class="card cp"><div style="font-weight:600;font-size:13.5px">Mortgage Calculator</div><p style="font-size:12px;color:var(--muted);margin-top:4px">Payment &amp; affordability calc</p><button class="btn btn-ghost btn-sm" style="margin-top:10px">Copy embed code</button></div>
+   </div>
+  </section>
+
+  <!-- PROSPECT -->
+  <section class="view" id="view-prospect">
+   <div class="ph"><h1>Prospect</h1><p>Predictive seller scores, FSBO / expired / absentee finders, skip-trace waterfall and DNC scrub — enrolled straight into CRM.</p></div>
+   <div class="grid c4" style="margin-bottom:18px">
+    <div class="card cp stat"><div class="k">Likely sellers (90d)</div><div class="v">214</div><div class="delta flat">in your farm</div></div>
+    <div class="card cp stat"><div class="k">Skip-trace hit rate</div><div class="v">92%</div><div class="delta">waterfall</div></div>
+    <div class="card cp stat"><div class="k">DNC-scrubbed</div><div class="v">100%</div><div class="delta flat">TCPA safe</div></div>
+    <div class="card cp stat"><div class="k">Enrolled to CRM</div><div class="v">61</div><div class="delta">this week</div></div>
+   </div>
+   <div class="card cp">
+    <div class="sec-t">Predictive seller leads</div>
+    <div style="display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap" id="prospectFilter"><span class="chip active" data-f="all">All</span><span class="chip" data-f="Absentee">Absentee owner</span><span class="chip" data-f="FSBO">FSBO</span><span class="chip" data-f="Expired">Expired</span></div>
+    <table class="tbl" style="margin-top:8px"><thead><tr><th>Address</th><th>Owner</th><th>Type</th><th>Score</th><th></th></tr></thead><tbody id="prospectBody"></tbody></table>
+   </div>
+  </section>
+  <!-- MORTGAGE -->
+  <section class="view" id="view-mortgage">
+   <div class="ph"><h1>Mortgage</h1><p>Calculators, an AI mortgage co-pilot, and TRID-compliant LO co-marketing — built into the agent's workflow.</p></div>
+   <div class="grid c2" style="align-items:start">
+    <div class="card cp">
+     <div class="mtabs" id="mtabs"><button class="active" data-m="pi">Payment</button><button data-m="afford">Affordability</button><button data-m="refi">Refi</button><button data-m="dscr">DSCR</button></div>
+     <div class="grid" style="grid-template-columns:1fr 1fr;gap:18px">
+      <div>
+       <div class="field"><label>Home price</label><input type="number" id="cPrice" value="492000"/></div>
+       <div class="field"><label>Down payment (%)</label><input type="number" id="cDown" value="20"/></div>
+       <div class="field"><label>Interest rate (%)</label><input type="number" id="cRate" value="6.625" step="0.001"/></div>
+       <div class="field"><label>Term (years)</label><select id="cTerm"><option>30</option><option>20</option><option>15</option></select></div>
+       <div class="field" id="rentF" style="display:none"><label>Expected monthly rent</label><input type="number" id="cRent" value="3400"/></div>
+      </div>
+      <div>
+       <div class="payout"><div class="pl" id="poL">Monthly payment</div><div class="pv" id="poV">$2,521</div><div class="pb" id="poB">Principal &amp; interest</div></div>
+       <div style="padding:6px 4px 0">
+        <div class="bd"><span class="kk">Loan amount</span><span class="vv" id="poLoan">$393,600</span></div>
+        <div class="bd"><span class="kk">Down payment</span><span class="vv" id="poDp">$98,400</span></div>
+        <div class="bd" id="poExtraRow"><span class="kk" id="poEK">Total interest</span><span class="vv" id="poEV">$513,000</span></div>
+       </div>
+      </div>
+     </div>
+    </div>
+    <div class="card cp">
+     <div class="sec-t"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="4"/></svg>AI Mortgage Co-pilot</div>
+     <div class="copilot">
+      <div class="msgs" id="coMsgs"></div>
+      <div style="padding:0 12px;display:flex;gap:6px;flex-wrap:wrap" id="coChips"></div>
+      <div class="inp"><input id="coInput" placeholder="Ask about rates, DTI, scenarios…"/><button class="btn btn-pri btn-sm" id="coSend">Send</button></div>
+     </div>
+    </div>
+   </div>
+  </section>
+
+  <!-- TRANSACT -->
+  <section class="view" id="view-transact">
+   <div class="ph"><h1>Transact</h1><p>Compliant, AI-reviewed transaction management — checklists, auto-filled forms, and a broker-grade compliance reviewer.</p></div>
+   <div class="grid c4" style="margin-bottom:18px">
+    <div class="card cp stat"><div class="k">Active</div><div class="v">7</div></div>
+    <div class="card cp stat"><div class="k">Pending</div><div class="v">3</div></div>
+    <div class="card cp stat"><div class="k">Closed YTD</div><div class="v">42</div></div>
+    <div class="card cp stat"><div class="k">Avg. days to close</div><div class="v">31</div></div>
+   </div>
+   <div class="grid c2" style="align-items:start">
+    <div class="card cp">
+     <div class="sec-t">1234 Oak St — closing checklist <span class="badge amber" style="margin-left:auto">Pending Close</span></div>
+     <div class="prog" style="margin-bottom:6px"><i id="txProg" style="width:67%"></i></div>
+     <div style="font-size:12px;color:var(--muted);margin-bottom:10px"><span id="txDone">8</span> of 12 complete</div>
+     <div id="txChecklist"></div>
+     <div class="sec-t" style="margin-top:20px">Documents</div>
+     <div id="txForms"></div>
+    </div>
+    <div class="card cp">
+     <div class="sec-t"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><path d="M12 3l8 4v5c0 4-3.5 7-8 9-4.5-2-8-5-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>AI Compliance Reviewer</div>
+     <div style="display:flex;gap:10px;margin-bottom:6px">
+      <div style="flex:1;text-align:center;padding:12px;border:1px solid var(--line);border-radius:10px"><div style="font-size:22px;font-weight:600;color:var(--good)">9</div><div style="font-size:11px;color:var(--muted)">Passed</div></div>
+      <div style="flex:1;text-align:center;padding:12px;border:1px solid var(--line);border-radius:10px"><div style="font-size:22px;font-weight:600;color:var(--warn)">3</div><div style="font-size:11px;color:var(--muted)">Warnings</div></div>
+      <div style="flex:1;text-align:center;padding:12px;border:1px solid var(--line);border-radius:10px"><div style="font-size:22px;font-weight:600;color:var(--danger)">0</div><div style="font-size:11px;color:var(--muted)">Blockers</div></div>
+     </div>
+     <div class="review"><div class="ri" style="background:var(--warn-bg)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2.4"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg></div><div><div style="font-weight:600;font-size:13px">Due diligence fee not yet documented in Form 2-T</div><div style="font-size:12px;color:var(--muted)">Add the agreed DD fee to section 1(d) before sending.</div></div></div>
+     <div class="review"><div class="ri" style="background:var(--warn-bg)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2.4"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg></div><div><div style="font-weight:600;font-size:13px">Lead-based paint disclosure missing date initials on p.2</div><div style="font-size:12px;color:var(--muted)">Pre-1978 home — both parties must initial &amp; date.</div></div></div>
+     <div class="review"><div class="ri" style="background:var(--warn-bg)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2.4"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg></div><div><div style="font-weight:600;font-size:13px">Closing disclosure exceeds 3-day delivery window</div><div style="font-size:12px;color:var(--muted)">TRID requires CD delivered ≥3 business days before closing — verify timeline.</div></div></div>
+     <div style="display:flex;gap:10px;margin-top:16px"><button class="btn btn-pri">Submit to Broker</button><button class="btn btn-ghost">Send for signature</button></div>
+    </div>
+   </div>
+  </section>
+
+  <!-- DEVELOPER -->
+  <section class="view" id="view-developer">
+   <div class="ph"><h1>Developer Portal</h1><p>Build on Nestava's property intelligence — REST endpoints, SDKs, and a native MCP server for Claude &amp; ChatGPT.</p></div>
+   <div class="grid c2" style="align-items:start">
+    <div class="card cp">
+     <div class="sec-t">Endpoint</div>
+     <div style="background:#0E2E2A;border-radius:10px;overflow:hidden">
+      <div style="padding:10px 14px;color:#bcd7d0;font-size:12px;font-family:var(--mono);display:flex;gap:8px;align-items:center;border-bottom:1px solid #ffffff14"><span style="background:var(--good);color:#06210f;padding:1px 7px;border-radius:5px;font-weight:700">POST</span> /v1/reports/buyer-defense</div>
+      <pre class="mono" style="margin:0;padding:14px;font-size:12px;color:#dbeae6;overflow:auto;line-height:1.7">{
+  "address": "1234 Oak St, Wilmington, NC",
+  "include": ["avm","permits","hazards","title","ai_narrative"],
+  "brand_kit_id": "bk_ccr"
+}</pre>
+     </div>
+     <div class="keyrow"><span style="color:var(--muted)">Authorization:</span><span>Bearer sk_live_••••••••4f2a</span><button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="copyText('sk_live_demo')">Copy</button></div>
+    </div>
+    <div class="card cp">
+     <div class="sec-t">API keys <button class="btn btn-pri btn-sm" id="newKey" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Create key</button></div>
+     <div id="apiKeys"></div>
+     <div class="sec-t" style="margin-top:22px">MCP Server</div>
+     <div class="card cp" style="box-shadow:none;display:flex;align-items:center;gap:12px"><div class="ti" style="width:34px;height:34px;border-radius:9px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="1.8"><path d="M8 9l-4 3 4 3M16 9l4 3-4 3"/></svg></div><div style="flex:1"><div style="font-weight:600;font-size:13.5px">Nestava MCP</div><div style="font-size:12px;color:var(--muted)">Native tool access for Claude Desktop</div></div><button class="btn btn-ghost btn-sm">Connect</button></div>
+    </div>
+   </div>
+   <div class="grid c3" style="margin-top:16px">
+    <div class="card cp"><div style="font-weight:600">API Starter</div><div style="font-size:24px;font-weight:600;margin:6px 0">$99<span style="font-size:13px;color:var(--muted)">/mo</span></div><div style="font-size:12.5px;color:var(--muted)">1,000 lookups · 100 AVMs · 50 reports</div></div>
+    <div class="card cp" style="border-color:var(--teal)"><div style="font-weight:600">API Growth</div><div style="font-size:24px;font-weight:600;margin:6px 0">$499<span style="font-size:13px;color:var(--muted)">/mo</span></div><div style="font-size:12.5px;color:var(--muted)">10k lookups · webhooks · TS &amp; Python SDKs</div></div>
+    <div class="card cp"><div style="font-weight:600">API Scale</div><div style="font-size:24px;font-weight:600;margin:6px 0">$1,999<span style="font-size:13px;color:var(--muted)">/mo</span></div><div style="font-size:12.5px;color:var(--muted)">100k lookups · white-label · 99.9% SLA</div></div>
+   </div>
+  </section>
+  <!--MORE--></div>
+ </div>
+</div>
+<script>
+const BRAND="Nestava";
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const money=n=>'$'+Math.round(n).toLocaleString();
+function toast(m){let t=document.createElement('div');t.textContent=m;t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0F4C46;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;z-index:200;box-shadow:0 10px 30px rgba(0,0,0,.2)';document.body.appendChild(t);setTimeout(()=>t.remove(),1600);}
+function copyText(t){try{navigator.clipboard.writeText(t);}catch(e){}toast('Copied to clipboard');}
+
+/* ---------- routing ---------- */
+const titles={dashboard:'Dashboard',dd:BRAND+' DD',crm:'CRM',marketing:'Marketing',sites:'Sites',prospect:'Prospect',mortgage:'Mortgage',transact:'Transact',developer:'Developer Portal'};
+function show(v){
+ $$('.view').forEach(x=>x.classList.remove('active'));
+ const el=$('#view-'+v); if(el)el.classList.add('active');
+ $$('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.view===v));
+ $('#crumb').textContent=titles[v]||'';
+ window.scrollTo(0,0); $('#sidebar').classList.remove('open');
+}
+document.addEventListener('click',e=>{const t=e.target.closest('[data-view]');if(t){show(t.dataset.view);}});
+
+/* ---------- seed data ---------- */
+const TASKS=[["Call Marcus Reyes — offer follow-up","9:30 AM",false],["Send Buyer Defense Report to the Carters","11:00 AM",false],["Review NCAR listing agreement — 1234 Oak St","1:00 PM",false],["Skip-trace 12 new FSBO matches","2:30 PM",true],["Prep open house flyer — 88 Marsh Pointe","4:00 PM",false]];
+const RECENT=[["1234 Oak St, Wilmington NC","Buyer Defense · 12m ago",7.2],["88 Marsh Pointe Dr, Leland NC","Pre-Listing DD · 2h ago",3.1],["412 Hawthorne Rd, Wilmington NC","Buyer Defense · Yesterday",5.8],["7 Beacon Ct, Carolina Beach NC","Refi / Equity · Yesterday",4.4]];
+const riskClass=s=>s>=6.5?'red':s>=4.5?'amber':'green';
+const riskGrad=s=>s>=6.5?'linear-gradient(140deg,#C2792E,#B23B3B)':s>=4.5?'linear-gradient(140deg,#D49B3E,#C2792E)':'linear-gradient(140deg,#2F7D55,#15655C)';
+
+function hash(s){let h=0;for(let i=0;i<s.length;i++){h=(h<<5)-h+s.charCodeAt(i);h|=0;}return Math.abs(h);}
+const OAK={addr:'1234 Oak St',city:'Wilmington, NC 28403',beds:4,baths:3,sqft:2840,year:2016,lot:'0.34 ac',flood:'AE',risk:7.2,list:492000,
+ avm:{hc:478000,hcL:465000,hcH:491000,at:492000,atL:474000,atH:510000,in:485000,inL:477000,inH:493000,consensus:485000,band:1.6,lo:465000,hi:510000},
+ comps:[['1210 Oak St',471000,174,'0.1 mi',-8000],['9 Beacon Ct',498000,167,'0.4 mi',12000],['405 Hawthorne Rd',462000,174,'0.5 mi',-5000],['77 Marsh Pointe',510000,167,'0.8 mi',18000],['330 Forest Hills',489000,170,'0.9 mi',3000]],
+ county:'New Hanover County',
+ permits:[['Roof replacement','Coastal Roofing LLC · 2021','Final / passed','good'],['HVAC — full system','Cape Fear Air · 2020','Final / passed','good'],['Deck addition','Owner / unpermitted · 2018','Open — never finaled','red'],['Electrical panel upgrade','Brightline Electric · 2019','Final / passed','good']],
+ hazards:[['Flood','Zone AE — 1% annual','amber'],['Wind / hurricane','Zone 2 — moderate','amber'],['Crime index','Below county avg','good'],['Climate (30-yr)','Moderate — storm surge','amber']],
+ owner:{name:'Pamela R. Hendricks',tenure:'8 yrs (since 2016)',mailing:'Same as property',vesting:'Joint tenancy',equity:'≈ 62%',lastSale:'$398,000 · 2016'},
+ insights:[['amber','Flood Zone AE','Property sits in FEMA Zone AE (1% annual flood risk). Lender will require flood insurance.','FEMA NFHL'],
+  ['amber','Priced 1.4% above comps','Consensus AVM is $485K; list is $492K. Comp-adjusted support is $478K–$491K.',BRAND+' AVM consensus'],
+  ['good','Strong school zone','Assigned to Wrightsville Beach Elementary (GreatSchools 8/10) and Hoggard High (7/10).','GreatSchools, NCDPI'],
+  ['amber','Est. $3,100–$4,200 / yr insurance','Composite hazard score drives a carrier-agnostic premium range incl. wind + flood riders.',BRAND+' Insurance Model'],
+  ['good','Clean title chain','4 ownership transfers since 1998, all properly recorded. No gaps or quitclaim red flags.','DataTree ownership history'],
+  ['amber','Moderate climate risk','Elevated hurricane wind exposure; 30-yr storm-surge probability above county median.','First Street Foundation'],
+  ['good','No active liens',"Title search shows no judgments, tax liens, or mechanic's liens against the parcel.",'DataTree title search'],
+  ['red','Unpermitted 2018 deck','2018 deck addition was never finaled. Recommend negotiating a credit or seller close-out.','New Hanover County']]};
+const RISK_OVERRIDE={'88 marsh pointe dr, leland nc':3.1,'412 hawthorne rd, wilmington nc':5.8,'7 beacon ct, carolina beach nc':4.4};
+function buildProp(addr){
+ const key=addr.trim().toLowerCase();
+ if(key.indexOf('1234 oak')===0) return OAK;
+ const h=hash(key);const base=320000+(h%480000);
+ const flood=['X','AE','X','VE'][h%4];const risk=RISK_OVERRIDE[key]??(2+(h%70)/10);
+ const beds=2+(h%4),baths=1+(h%3),sqft=1500+(h%2200),year=1968+(h%56);
+ const city=(addr.split(',')[1]||' Wilmington, NC').trim()+(addr.match(/\d{5}/)?'':' 28401');
+ const mk=(n,d)=>['Comp '+n,base+d,Math.round((base+d)/sqft),(0.1+(h%9)/10).toFixed(1)+' mi',d];
+ const flZone=flood==='X'?'Zone X — minimal':flood==='AE'?'Zone AE — 1% annual':'Zone VE — coastal';
+ const fltone=flood==='X'?'good':'amber';
+ return{addr:addr.split(',')[0],city:city,beds,baths,sqft,year,lot:(0.12+(h%70)/100).toFixed(2)+' ac',flood,risk:+(+risk).toFixed(1),list:base+ (h%20000),
+  avm:{hc:base-7000,hcL:base-20000,hcH:base+6000,at:base+9000,atL:base-9000,atH:base+24000,in:base,inL:base-8000,inH:base+8000,consensus:base,band:1.8,lo:base-22000,hi:base+26000},
+  comps:[mk('A',-9000),mk('B',13000),mk('C',-4000),mk('D',19000)],
+  county:(city.includes('Leland')||city.includes('Hampstead'))?'Brunswick County':'New Hanover County',
+  permits:[['Roof / re-shingle','Local contractor · '+(2015+h%8),'Final / passed','good'],[(h%2?'Addition':'Solar install'),(h%2?'Owner / unpermitted · '+(2017+h%6):'SunPro · '+(2019+h%5)),(h%2?'Open — unresolved':'Final / passed'),(h%2?'red':'good')],['Electrical upgrade','Brightline Electric · '+(2016+h%7),'Final / passed','good']],
+  hazards:[['Flood',flZone,fltone],['Wind / hurricane',(flood==='VE'?'Zone 3 — elevated':'Zone 2 — moderate'),flood==='VE'?'red':'amber'],['Crime index','Near county avg','good'],['Climate (30-yr)',flood==='X'?'Low':'Moderate',flood==='X'?'good':'amber']],
+  owner:{name:['J. & M. Caldwell','Coastal Holdings LLC','R. Castellano','T. Whitaker'][h%4],tenure:(3+h%18)+' yrs',mailing:(h%3?'Same as property':'Out of state'),vesting:(h%2?'Joint tenancy':'Sole owner'),equity:'≈ '+(40+h%50)+'%',lastSale:money(base-40000)+' · '+(2006+h%17)},
+  insights:[[fltone,'Flood '+flZone,'FEMA determination drives insurance requirements and lender conditions.','FEMA NFHL'],
+   ['amber','Valuation vs. list','Consensus AVM is '+money(base)+'. Verify list price against comp-adjusted support.',BRAND+' AVM consensus'],
+   ['good','School zone','Assigned schools rated 6–8/10 by GreatSchools.','GreatSchools, NCDPI'],
+   [(h%2?'red':'good'),(h%2?'Open permit detected':'Permits all finaled'),(h%2?'An open building permit should be resolved before closing.':'No open or expired permits on record.'),'County records'],
+   ['good','Title status','No judgments, tax liens, or mechanic’s liens found.','DataTree title search']]};
+}
+let currentProp=OAK;
+
+/* ---------- dashboard ---------- */
+function renderDashboard(){
+ $('#todayDate').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+ const open=TASKS.filter(t=>!t[2]).length;$('#taskCount').textContent=open;$('#openCount').textContent=open+' open';
+ $('#taskList').innerHTML=TASKS.map((t,i)=>`<div class="task ${t[2]?'done':''}" data-i="${i}"><div class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg></div><div class="tt">${t[0]}</div><div class="tm">${t[1]}</div></div>`).join('');
+ $$('#taskList .task').forEach(el=>el.onclick=()=>{const i=+el.dataset.i;TASKS[i][2]=!TASKS[i][2];DB.tasksDone=TASKS.map(t=>t[2]);persist();renderDashboard();});
+ $('#recentReports').innerHTML=RECENT.map(r=>`<div class="row" data-addr="${r[0]}" style="cursor:pointer"><div class="av gy"><svg width="17" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="1.8"><path d="M5 3h9l5 5v11a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg></div><div class="meta"><div class="t">${r[0]}</div><div class="s">${r[1]}</div></div><div class="end"><span class="badge ${riskClass(r[2])}">Risk ${r[2]}</span></div></div>`).join('');
+ $$('#recentReports .row').forEach(el=>el.onclick=()=>{runDD(el.dataset.addr);show('dd');});
+ // sparkline
+ const N=30,pts=[];let v=55;for(let i=0;i<N;i++){v+=Math.sin(i/2.2)*5+(hash('s'+i)%7)-2.5+i*0.5;pts.push(Math.max(20,v));}
+ const mx=Math.max(...pts),mn=Math.min(...pts),W=800,H=120;
+ const xy=pts.map((p,i)=>[i/(N-1)*W,H-8-(p-mn)/(mx-mn)*(H-22)]);
+ const line=xy.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+ $('#sparkLine').setAttribute('d',line);
+ $('#sparkArea').setAttribute('d',line+` L${W} ${H} L0 ${H} Z`);
+}
+
+/* ---------- DD ---------- */
+function iconTone(t){const c=t==='good'?'var(--good)':t==='red'?'var(--danger)':'var(--warn)';const bg=t==='good'?'var(--good-bg)':t==='red'?'var(--danger-bg)':'var(--warn-bg)';
+ const path=t==='good'?'<path d="M5 12l5 5L20 6"/>':'<path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/>';
+ return `<div class="ii" style="background:${bg}"><svg width="17" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.2">${path}</svg></div>`;}
+function renderDD(p){
+ currentProp=p;
+ $('#propCard').innerHTML=`<div class="ph-img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-7h6v7"/></svg></div>
+  <div style="font-size:18px;font-weight:600;margin-top:14px">${p.addr}</div>
+  <div style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:5px;margin-top:2px"><svg width="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-5.5 7-11a7 7 0 10-14 0c0 5.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>${p.city}</div>
+  <div class="facts2"><div class="f"><div class="v">${p.beds}</div><div class="k">Beds</div></div><div class="f"><div class="v">${p.baths}</div><div class="k">Baths</div></div><div class="f"><div class="v">${p.sqft.toLocaleString()}</div><div class="k">Sq Ft</div></div><div class="f"><div class="v">${p.year}</div><div class="k">Year</div></div><div class="f"><div class="v">${p.lot}</div><div class="k">Lot</div></div><div class="f"><div class="v">${p.flood}</div><div class="k">Flood</div></div></div>
+  <div style="display:flex;align-items:center;gap:10px;margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:10px"><div class="ring" style="width:54px;height:54px;flex:0 0 54px;background:${riskGrad(p.risk)}"><div class="n" style="font-size:17px">${p.risk}</div></div><div><div style="font-weight:600;font-size:13px">Risk score</div><div style="font-size:12px;color:var(--muted)">${p.risk>=6.5?'Review carefully':p.risk>=4.5?'Moderate':'Generally clean'}</div></div></div>`;
+ // overview
+ $('#sub-ov').innerHTML=`<div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">${p.insights.map(i=>`<div class="insight">${iconTone(i[0])}<div><div class="it">${i[1]}</div><div class="id">${i[2]}</div><div class="isrc">${i[3]}</div></div></div>`).join('')}</div>`;
+ // avm
+ const a=p.avm,span=a.hi-a.lo,fl=((a.inL-a.lo)/span*100),fw=((a.inH-a.inL)/span*100),mk=((a.consensus-a.lo)/span*100);
+ $('#sub-avm').innerHTML=`<div style="font-weight:600;font-size:13.5px;margin-bottom:10px">3-AVM Consensus</div>
+  <div class="avm"><div class="a"><div class="src">HouseCanary</div><div class="val">${money(a.hc)}</div><div class="band">${money(a.hcL)} – ${money(a.hcH)}</div></div>
+   <div class="a"><div class="src">ATTOM</div><div class="val">${money(a.at)}</div><div class="band">${money(a.atL)} – ${money(a.atH)}</div></div>
+   <div class="a best"><div class="src">${BRAND} Internal</div><div class="val">${money(a.in)}</div><div class="band">${money(a.inL)} – ${money(a.inH)}</div><span class="badge teal" style="margin-top:8px">Highest confidence</span></div></div>
+  <div style="border:1px solid var(--line);border-radius:12px;padding:15px;margin-top:14px"><div style="display:flex;justify-content:space-between;align-items:baseline"><div><div style="font-size:12px;color:var(--muted)">Consensus value · confidence band ±${a.band}%</div><div style="font-size:23px;font-weight:600">${money(a.consensus)}</div></div><div style="font-size:12px;color:var(--muted)">List ${money(p.list)}</div></div><div class="bandbar"><div class="fill" style="left:${fl}%;width:${fw}%"></div><div class="mk" style="left:${mk}%"></div></div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted2);margin-top:6px"><span>${money(a.lo)}</span><span>${money(a.hi)}</span></div></div>
+  <div style="font-weight:600;font-size:13.5px;margin:18px 0 6px">Top comparable sales</div>
+  <table class="tbl"><thead><tr><th>Address</th><th>Sold</th><th>$/sqft</th><th>Dist.</th><th>Adj.</th></tr></thead><tbody>${p.comps.map(c=>`<tr><td>${c[0]}</td><td>${money(c[1])}</td><td>$${c[2]}</td><td>${c[3]}</td><td class="${c[4]<0?'neg':'pos'}">${c[4]<0?'-$'+Math.abs(c[4]).toLocaleString():'+$'+c[4].toLocaleString()}</td></tr>`).join('')}</tbody></table>`;
+ // permits
+ $('#sub-perm').innerHTML=`<div style="font-weight:600;font-size:13.5px;margin-bottom:6px">${p.county} permits</div>${p.permits.map(pm=>`<div class="permit"><span class="pdot" style="background:${pm[3]==='red'?'var(--danger)':'var(--good)'}"></span><div style="flex:1"><div style="font-weight:600;font-size:13.5px">${pm[0]}</div><div style="font-size:12px;color:var(--muted)">${pm[1]}</div></div><span class="badge ${pm[3]==='red'?'red':'green'}">${pm[2]}</span></div>`).join('')}`;
+ // hazards
+ $('#sub-haz').innerHTML=p.hazards.map(hz=>`<div class="permit"><span class="pdot" style="background:${hz[2]==='good'?'var(--good)':hz[2]==='red'?'var(--danger)':'var(--warn)'}"></span><div style="flex:1"><div style="font-weight:600;font-size:13.5px">${hz[0]}</div></div><span class="badge ${hz[2]==='good'?'green':hz[2]==='red'?'red':'amber'}">${hz[1]}</span></div>`).join('');
+ // owner
+ const o=p.owner;$('#sub-own').innerHTML=`<div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">${[['Owner of record',o.name],['Ownership tenure',o.tenure],['Mailing address',o.mailing],['Vesting',o.vesting],['Est. equity',o.equity],['Last sale',o.lastSale]].map(kv=>`<div style="border:1px solid var(--line);border-radius:10px;padding:12px"><div style="font-size:11.5px;color:var(--muted)">${kv[0]}</div><div style="font-weight:600;margin-top:3px">${kv[1]}</div></div>`).join('')}</div>`;
+ // reports
+ const rtypes=[['Buyer Defense Report','Full risk brief to send a buyer before they offer.'],['Pre-Listing DD','Find issues before you list — and price with confidence.'],['Investor Underwriting','Cap rate, rehab flags, rent comps for investor clients.'],['Refi / Equity','Equity position + hazard refresh for refinance leads.']];
+ $('#sub-rep').innerHTML=`<div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">${rtypes.map((r,i)=>`<div class="tile" data-rep="${i}"><h4>${r[0]}</h4><p>${r[1]}</p><div class="meta">Generate →</div></div>`).join('')}</div><div style="margin-top:14px"><button class="btn btn-pri" data-rep="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h9l5 5v11a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/><path d="M9 13l2 2 4-4"/></svg>Generate Buyer Defense Report</button></div>`;
+ $$('[data-rep]').forEach(b=>b.onclick=()=>genReport(rtypes[+b.dataset.rep][0]));
+}
+$('#ddTabs')&&$$('#ddTabs button').forEach(b=>b.onclick=()=>{$$('#ddTabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');$$('#view-dd .subtab').forEach(s=>s.classList.remove('active'));$('#sub-'+b.dataset.t).classList.add('active');});
+function runDD(addr){renderDD(buildProp(addr));$('#repView').style.display='none';$('#ddMain').style.display='block';$$('#ddTabs button').forEach((x,i)=>x.classList.toggle('active',i===0));$$('#view-dd .subtab').forEach((s,i)=>s.classList.toggle('active',i===0));$('#ddInput').value=addr;}
+function genReport(type){
+ const p=currentProp,flags=p.insights.filter(i=>i[0]!=='good');
+ const facts=[['Est. value',money(p.avm.consensus)],['Beds / Baths',p.beds+' / '+p.baths],['Sq ft',p.sqft.toLocaleString()],['Year',p.year],['Flood','Zone '+p.flood]];
+ $('#repView').innerHTML=`<div style="margin-bottom:14px"><button class="btn btn-ghost btn-sm" id="repBack">← Back to ${BRAND} DD</button></div>
+ <div class="rep"><div class="band"><div><div class="rk">${BRAND} DD · ${type}</div><h2>${p.addr}</h2><div class="sb">${p.city} · Generated ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div></div>
+   <div class="ag"><div class="n">Dana Whitfield</div><div>Carolina Coast Realty</div><div class="am">(910) 555-0162 · NC #C-28841</div></div></div>
+  <div class="body"><div class="scorewrap"><div class="ring" style="background:${riskGrad(p.risk)}"><div class="n">${p.risk}</div><div class="l">Risk score</div></div>
+   <div class="grid" style="grid-template-columns:repeat(5,1fr);gap:8px;flex:1;min-width:280px">${facts.map(f=>`<div style="background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px"><div style="font-size:11px;color:var(--muted)">${f[0]}</div><div style="font-weight:600;font-size:15px;margin-top:2px">${f[1]}</div></div>`).join('')}</div></div>
+   <div style="background:var(--bg2);border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:10px;padding:16px;margin:18px 0;line-height:1.65;font-size:14px"><div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);margin-bottom:8px">AI narrative</div>This ${p.year} property carries a <b>${p.risk>=6.5?'review-carefully':p.risk>=4.5?'moderate':'generally clean'}</b> risk profile (score ${p.risk}/10). It sits in <b>FEMA Zone ${p.flood}</b>; the ${BRAND} 3-AVM consensus is <b>${money(p.avm.consensus)}</b> against a list of ${money(p.list)}. ${flags.length?'Key items to address before offering: '+flags.map(f=>f[1].toLowerCase()).slice(0,3).join(', ')+'.':'No material red flags surfaced in title, permits, or hazards.'}</div>
+   <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px">
+    <div style="border:1px solid var(--line);border-radius:12px;padding:15px"><div style="font-weight:600;margin-bottom:10px">Hazards</div>${p.hazards.map(h=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line2);font-size:13px"><span style="color:var(--muted)">${h[0]}</span><b>${h[1]}</b></div>`).join('')}</div>
+    <div style="border:1px solid var(--line);border-radius:12px;padding:15px"><div style="font-weight:600;margin-bottom:10px">Permits — ${p.county}</div>${p.permits.map(pm=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line2);font-size:13px"><span>${pm[0]}</span><span class="${pm[3]==='red'?'neg':'pos'}" style="font-weight:600">${pm[2]}</span></div>`).join('')}</div>
+   </div>
+   <div style="border:1px solid var(--line);border-radius:12px;padding:15px;margin-top:14px"><div style="font-weight:600;margin-bottom:8px">Risk flags &amp; recommended actions</div>${(flags.length?flags:[['good','No material issues','Title, permits, and hazards are clean.']]).map(f=>`<div style="display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line2);font-size:13.5px">${iconTone(f[0])}<div><b>${f[1]}.</b> ${f[2]}</div></div>`).join('')}</div>
+  </div>
+  <div class="repfoot"><b>Sources:</b> FEMA NFHL · ${p.county} assessor &amp; permits · ATTOM &amp; HouseCanary AVM · DataTree title · GreatSchools · First Street Foundation. Demo data shown in this prototype. <b>Disclosures:</b> Prepared by a licensed NC broker; informational only — not a survey, appraisal, or legal advice. Fair Housing compliant. Equal Housing Opportunity.</div></div>
+ <div style="display:flex;gap:10px;margin-top:16px"><button class="btn btn-pri" onclick="toast('Report sent to client (demo)')">Send to client</button><button class="btn btn-ghost" onclick="copyText('${BRAND.toLowerCase()}.app/r/${hash(p.addr)}')">Copy link</button><button class="btn btn-ghost" onclick="window.print()">Download PDF</button></div>`;
+ $('#ddMain').style.display='none';$('#repView').style.display='block';window.scrollTo(0,0);
+ $('#repBack').onclick=()=>{$('#repView').style.display='none';$('#ddMain').style.display='block';};
+}
+$('#runDD').onclick=()=>runDD($('#ddInput').value||'1234 Oak St, Wilmington, NC');
+$('#ddInput').addEventListener('keydown',e=>{if(e.key==='Enter')runDD($('#ddInput').value);});
+$$('#view-dd .chip').forEach(c=>c.onclick=()=>runDD(c.dataset.addr));
+
+/* ---------- CRM ---------- */
+const CONTACTS=[
+ {id:0,name:'Marcus Reyes',init:'MR',status:'Hot',tag:'red',src:'IDX listing click',role:'Active buyer · offer pending',pre:'Yes — $512K',prop:'1234 Oak St',notes:'Prefers texts over calls. Relocating from Charlotte. Wants to close before August school year.',docs:'Pre-approval letter, Buyer Defense Report (1234 Oak St), Agency agreement.',acts:[['Today, 9:32 AM','Viewed 1234 Oak St listing page'],['Today, 8:05 AM','Opened "Your offer next steps" email (2×)'],['Yesterday, 6:40 PM','Buyer Defense Report delivered for 1234 Oak St'],['Yesterday, 2:15 PM','Inbound text: "Can we tour again Saturday?"']]},
+ {id:1,name:'Janet & Tom Carter',init:'JC',status:'Nurture',tag:'amber',src:'Web Form',role:'Buyers · early stage',pre:'Pre-qual started',prop:'88 Marsh Pointe Dr',notes:'Second-home buyers. Flexible timeline, watching coastal inventory.',docs:'Buyer guide sent.',acts:[['Today, 7:50 AM','Enrolled in "Luxury Buyer Nurture" sequence'],['Yesterday','Visited 7 Beacon Ct listing page (3rd time this week)']]},
+ {id:2,name:'Ada Okafor',init:'AO',status:'New Lead',tag:'teal',src:'Open House',role:'Buyer',pre:'Not started',prop:'7 Beacon Ct',notes:'Met at 7 Beacon Ct open house. Cash buyer, investor profile.',docs:'—',acts:[['Today, 11:10 AM','Moved from New Lead → contacted']]},
+ {id:3,name:'Sofia Delgado',init:'SD',status:'Under Contract',tag:'green',src:'Referral',role:'Buyer · under contract',pre:'Yes — $445K',prop:'412 Hawthorne Rd',notes:'Inspection scheduled. Smooth file, responsive.',docs:'Offer to Purchase (2-T), pre-approval, agency agreement.',acts:[['Today, 10:02 AM','Replied to inspection scheduling email'],['Yesterday','Outbound call — 4m 12s. Reviewed counter at $440K.']]},
+ {id:4,name:'Liam Burke',init:'LB',status:'Nurture',tag:'amber',src:'Open House',role:'Buyer',pre:'Not started',prop:'—',notes:'First-time buyer, budget ~$300K.',docs:'—',acts:[['2 days ago','First web visit via Google → IDX search']]},
+ {id:5,name:'Greg Harlow',init:'GH',status:'New Lead',tag:'teal',src:'Cold Call',role:'Seller lead',pre:'n/a',prop:'12 Pine Hollow',notes:'Considering listing in spring. Wants a CMA.',docs:'—',acts:[['Yesterday','Outbound call — left voicemail']]},
+ {id:6,name:"Maeve O'Brien",init:'MO',status:'Nurture',tag:'amber',src:'IDX',role:'Buyer',pre:'Pre-qual started',prop:'201 Airlie Rd',notes:'Watching Airlie Rd area specifically.',docs:'—',acts:[['3 days ago','Enrolled in buyer nurture']]}
+];
+let crmSel=0;
+function renderCrmList(f=''){
+ const list=CONTACTS.filter(c=>c.name.toLowerCase().includes(f.toLowerCase())||c.src.toLowerCase().includes(f.toLowerCase()));
+ $('#crmList').innerHTML=list.map(c=>`<div class="row" data-id="${c.id}" style="cursor:pointer;${c.id===crmSel?'background:var(--teal-tint);margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:8px':''}"><div class="av ${c.tag==='amber'?'am':''}">${c.init}</div><div class="meta"><div class="t">${c.name}</div><div class="s">${c.src} · ${c.prop}</div></div><span class="badge ${c.tag}">${c.status}</span></div>`).join('')||'<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">No contacts match.</div>';
+ $$('#crmList .row').forEach(el=>el.onclick=()=>{crmSel=+el.dataset.id;renderCrmList($('#crmFilter').value);renderCrmDetail(crmSel);});
+}
+function renderCrmDetail(id){
+ const c=CONTACTS.find(x=>x.id===id);if(!c)return;
+ $('#crmDetail').innerHTML=`<div class="card cp"><div style="display:flex;align-items:center;gap:14px"><div class="av ${c.tag==='amber'?'am':''}" style="width:48px;height:48px;border-radius:12px;font-size:16px">${c.init}</div><div style="flex:1"><div style="font-size:18px;font-weight:600">${c.name}</div><div style="font-size:13px;color:var(--muted)">${c.role}</div></div><span class="badge ${c.tag}">${c.status==='Hot'?'🔥 Hot':c.status}</span></div>
+  <div style="display:flex;gap:8px;margin-top:14px"><button class="btn btn-pri btn-sm" onclick="toast('Enrolled ${c.name.split(' ')[0]} in Luxury Buyer Nurture')">Enroll in sequence</button><button class="btn btn-ghost btn-sm" onclick="toast('Dialing ${c.name.split(' ')[0]}… (demo)')">Start power dial</button><button class="btn btn-ghost btn-sm" data-view="dd" onclick="runDD('${c.prop}, Wilmington NC')">View DD</button></div>
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-top:16px">${[['Lead source',c.src],['Pre-approval',c.pre],['Active property',c.prop],['Stage',c.status]].map(kv=>`<div style="border:1px solid var(--line);border-radius:10px;padding:11px"><div style="font-size:11.5px;color:var(--muted)">${kv[0]}</div><div style="font-weight:600;margin-top:2px">${kv[1]}</div></div>`).join('')}</div>
+  <div style="margin-top:16px"><div style="font-size:12px;color:var(--muted);font-weight:600">Documents</div><div style="font-size:13px;margin-top:4px">${c.docs}</div></div>
+  <div style="margin-top:14px"><div style="font-size:12px;color:var(--muted);font-weight:600">Notes</div><div style="font-size:13px;margin-top:4px;line-height:1.55">${c.notes}</div></div>
+  <div class="sec-t" style="margin-top:18px">Recent activity</div>${c.acts.map(a=>`<div class="row"><div class="av gy" style="width:30px;height:30px;flex:0 0 30px"><svg width="14" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><div class="meta"><div class="t" style="font-weight:500;font-size:13px">${a[1]}</div><div class="s">${a[0]}</div></div></div>`).join('')}</div>`;
+}
+
+/* ---------- marketing ---------- */
+let mktKind='New listing flyer';
+$$('#mktChips .chip').forEach(c=>c.onclick=()=>{mktKind=c.dataset.k;$$('#mktChips .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');});
+$('#mktChips .chip').classList.add('active');
+$('#mktGen').onclick=()=>{
+ const o=$('#mktOut');o.innerHTML=`<div style="margin-top:16px;padding:30px;text-align:center;color:var(--muted)"><div class="spinner" style="width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--teal);border-radius:50%;margin:0 auto 12px;animation:spin .8s linear infinite"></div>Generating ${mktKind.toLowerCase()}…</div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>`;
+ setTimeout(()=>{o.innerHTML=`<div style="margin-top:16px;border:1px solid var(--line);border-radius:12px;overflow:hidden"><div style="background:linear-gradient(135deg,#0F4C46,#15655C);color:#fff;padding:20px"><div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#a7ccc4;font-weight:700">${mktKind}</div><div style="font-size:22px;font-weight:600;margin-top:6px">Just Listed — 1234 Oak St</div><div style="color:#bcd7d0;font-size:13px;margin-top:4px">4 bd · 3 ba · 2,840 sqft · Low flood risk · $492,000</div></div><div style="padding:16px;font-size:13.5px;line-height:1.6;color:#2b3a34">Sun-filled waterfront craftsman with a brand-new roof &amp; HVAC, a chef's kitchen, and a screened porch over the marsh. Verified low-flood-risk and clean title via ${BRAND} DD. <b>Open house Saturday 1–3pm.</b> <span style="color:var(--muted2);font-size:11px">— Fair Housing compliant · auto-checked</span></div><div style="padding:0 16px 16px;display:flex;gap:8px"><button class="btn btn-pri btn-sm" onclick="toast('Posted to Facebook, Instagram & LinkedIn (demo)')">Post to 3 channels</button><button class="btn btn-ghost btn-sm" onclick="toast('Opening editor…')">Edit</button><button class="btn btn-ghost btn-sm" onclick="window.print()">Download</button></div></div>`;},1100);
+};
+
+/* ---------- sites ---------- */
+const THEMES=[['Coastal luxury','Cream and sand with a serif display and editorial imagery — for waterfront & lifestyle.',['#EFE7D8','#D8C5A6','#9FB8C4','#2B3A42']],
+ ['Modern minimal','Stark white and black with oversized sans and mono accents — design-forward buyers.',['#FFFFFF','#111111','#E5E5E5','#000000']],
+ ['Warm residential','Terracotta and cream with a friendly sans — family-focused suburban agents.',['#E9D9C6','#C8714D','#EBC9A6','#5B3A2E']],
+ ['Urban modern','Slate and charcoal with geometric type and high contrast — downtown condos & lofts.',['#C9CED3','#3A4046','#6B7178','#1B1E22']],
+ ['Classic luxury','Navy and gold with serif headings on a formal grid — estate & traditional luxury.',['#1B2A4A','#C9A24B','#E8E3D6','#0E1730']],
+ ['Mountain & rural','Forest green and cream with organic texture — land, mountain homes & ranches.',['#DDE5D2','#3C5A40','#B6C2A3','#26331F']],
+ ['Bold contemporary','Black with a neon accent and futurist sans — statement-making, viral marketing.',['#0A0A0A','#C8FF3D','#1A1A1A','#222222']],
+ ['Southern traditional','Muted blush and cream with a slab serif — traditional Southern markets.',['#EFE0DD','#C98F86','#EAD9C2','#5A3F3A']]];
+$('#themeGallery').innerHTML=THEMES.map((t,i)=>`<div class="theme" data-ti="${i}"><div class="sw">${t[2].map(c=>`<span style="background:${c}"></span>`).join('')}</div><div class="tb"><h5>${t[0]}</h5><p>${t[1]}</p></div></div>`).join('');
+$$('#themeGallery .theme').forEach(el=>el.onclick=()=>toast('Theme "'+THEMES[+el.dataset.ti][0]+'" loaded into the block editor'));
+
+/* ---------- prospect ---------- */
+const LEADS=[['55 Dockside Ln, Wilmington','R. Castellano','Absentee',91],['118 Magnolia Way, Leland','D. Pruitt','FSBO',86],['9 Cypress Bend, Hampstead','Coastal Holdings LLC','Absentee',83],['402 Live Oak Pkwy, Wilmington','M. Santos','Expired',79],['76 Heron Cove, Carolina Beach','T. Whitaker','FSBO',74],['230 Greenfield St, Wilmington','L. Abernathy','Expired',68]];
+function renderProspect(f='all'){
+ const rows=LEADS.filter(l=>f==='all'||l[2]===f);
+ $('#prospectBody').innerHTML=rows.map(l=>`<tr><td style="font-weight:600">${l[0]}</td><td>${l[1]}</td><td><span class="badge gray">${l[2]}</span></td><td><span class="badge ${l[3]>=85?'red':l[3]>=75?'amber':'green'}">${l[3]}</span></td><td style="text-align:right;white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="toast('Skip-trace queued (DNC-scrubbed)')">Skip trace</button> <button class="btn btn-pri btn-sm" onclick="toast('Enrolled in outreach sequence')">Sequence</button></td></tr>`).join('');
+}
+$$('#prospectFilter .chip').forEach(c=>c.onclick=()=>{$$('#prospectFilter .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');renderProspect(c.dataset.f);});
+
+/* ---------- mortgage ---------- */
+let mMode='pi';
+function calc(){
+ const price=+$('#cPrice').value||0,downP=+$('#cDown').value||0,rate=(+$('#cRate').value||0)/100/12,term=(+$('#cTerm').value||30)*12;
+ const loan=price*(1-downP/100),dp=price-loan,pi=rate>0?loan*rate*Math.pow(1+rate,term)/(Math.pow(1+rate,term)-1):loan/term;
+ $('#poLoan').textContent=money(loan);$('#poDp').textContent=money(dp);$('#rentF').style.display=mMode==='dscr'?'block':'none';
+ const L=$('#poL'),V=$('#poV'),B=$('#poB'),EK=$('#poEK'),EV=$('#poEV');
+ if(mMode==='pi'){L.textContent='Monthly payment';V.textContent=money(pi);B.textContent='Principal & interest';EK.textContent='Total interest (life of loan)';EV.textContent=money(pi*term-loan);}
+ else if(mMode==='afford'){L.textContent='Payment at this price';V.textContent=money(pi);B.textContent='28% DTI guideline';EK.textContent='Suggested gross income';EV.textContent=money(pi/0.28)+'/mo';}
+ else if(mMode==='refi'){const oldPi=pi*1.16;L.textContent='New payment';V.textContent=money(pi);B.textContent='vs. '+money(oldPi)+' prior';EK.textContent='Monthly savings';EV.textContent=money(oldPi-pi)+'/mo';}
+ else{const rent=+$('#cRent').value||0,d=rent/pi;L.textContent='DSCR';V.textContent=d.toFixed(2)+'×';B.textContent=d>=1.2?'Strong — approves ≥1.20×':d>=1?'Marginal':'Below 1.0 — negative';EK.textContent='Monthly cash flow';EV.textContent=money(rent-pi)+'/mo';}
+}
+$$('#mtabs button').forEach(b=>b.onclick=()=>{$$('#mtabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');mMode=b.dataset.m;calc();});
+['cPrice','cDown','cRate','cTerm','cRent'].forEach(id=>$('#'+id).addEventListener('input',calc));
+const COQA=[['What’s the max purchase price for a buyer earning $135K with $40K down?','At $135K income, a ~28% front-end DTI supports ≈$3,150/mo for housing. With $40K down at 6.625% / 30-yr (taxes+ins ≈ $560/mo), that maps to roughly a <b>$455K–$475K</b> purchase price. Pushing to 36% back-end (if low other debt) stretches toward <b>$510K</b>.'],
+ ['Payment on $492K at 6.625%, 20% down?','20% down = $98,400; loan $393,600. At 6.625% / 30-yr, principal & interest ≈ <b>$2,521/mo</b>. Add est. taxes + insurance (~$640/mo here, incl. flood) → ~$3,160/mo PITI.'],
+ ['Refi break-even on a 1.2% rate drop?','On a ~$394K balance, a 1.2% drop saves ≈ $300/mo. At ~$4,200 in closing costs, break-even is <b>~14 months</b> — worth it if they hold the home 2+ years.'],
+ ['DSCR on $3,400 rent for this property?','At $3,400 rent vs. ≈$2,521 P&I, DSCR ≈ <b>1.35×</b> — comfortably above the 1.20× most DSCR lenders require, so it qualifies as a rental.']];
+function coPush(t,who){const d=document.createElement('div');d.className='bub '+who;d.innerHTML=t;$('#coMsgs').appendChild(d);$('#coMsgs').scrollTop=9e9;}
+function coAns(q){const m=COQA.find(x=>x[0]===q);coPush(m?m[1]:'Great question — based on current rates and the buyer’s profile, I’d model a few scenarios. Connect a live PPE feed (Optimal Blue/Polly) to pull exact pricing.','a');}
+$('#coChips').innerHTML=COQA.map(q=>`<span class="chip" style="font-size:11.5px">${q[0].length>34?q[0].slice(0,32)+'…':q[0]}</span>`).join('');
+$$('#coChips .chip').forEach((c,i)=>c.onclick=()=>{coPush(COQA[i][0],'u');setTimeout(()=>coAns(COQA[i][0]),350);});
+$('#coSend').onclick=()=>{const v=$('#coInput').value.trim();if(!v)return;coPush(v,'u');$('#coInput').value='';setTimeout(()=>coAns(v),350);};
+$('#coInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('#coSend').click();});
+coPush('Hi Dana — ask me about payments, affordability, refi break-evens, or DSCR for any scenario.','a');
+
+/* ---------- transact ---------- */
+const CHECK=[['Listing agreement signed',true],['Seller disclosures complete',true],['Property photos uploaded',true],['MLS listing live',true],['Offer received & reviewed',true],['Purchase agreement executed',true],['Earnest money deposited',true],['Inspection scheduled',true],['Appraisal ordered',false],['Title search cleared',false],['Final walkthrough',false],['Closing disclosure sent',false]];
+const FORMS=[['NCAR Listing Agreement','Signed','green'],['Residential Property Disclosure','Signed','green'],['Lead-Based Paint Disclosure','Needs initials','amber'],['Offer to Purchase (Form 2-T)','Executed','green'],['Due Diligence Agreement','Pending signature','amber'],['Closing Disclosure','Awaiting lender','gray']];
+function renderTx(){
+ $('#txChecklist').innerHTML=CHECK.map((c,i)=>`<div class="task ${c[1]?'done':''}" data-ti="${i}"><div class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg></div><div class="tt">${c[0]}</div></div>`).join('');
+ $$('#txChecklist .task').forEach(el=>el.onclick=()=>{const i=+el.dataset.ti;CHECK[i][1]=!CHECK[i][1];renderTx();});
+ const done=CHECK.filter(c=>c[1]).length;$('#txDone').textContent=done;$('#txProg').style.width=Math.round(done/CHECK.length*100)+'%';
+ $('#txForms').innerHTML=FORMS.map(f=>`<div class="row"><div class="av gy" style="width:30px;height:30px;flex:0 0 30px"><svg width="14" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="1.8"><path d="M5 3h9l5 5v11a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg></div><div class="meta"><div class="t" style="font-size:13px">${f[0]}</div></div><span class="badge ${f[2]}">${f[1]}</span></div>`).join('');
+}
+
+/* ---------- developer ---------- */
+const KEYS=[['Production','sk_live_••••••••4f2a','2 hours ago'],['CI / Staging','sk_test_••••••••9b71','Yesterday']];
+function renderKeys(){$('#apiKeys').innerHTML=KEYS.map(k=>`<div class="keyrow"><div style="flex:1"><div style="font-family:var(--f);font-weight:600;font-size:13px">${k[0]}</div><div style="color:var(--muted)">${k[1]}</div></div><span style="color:var(--muted2);font-size:11px">${k[2]}</span></div>`).join('');}
+$('#newKey').onclick=()=>{const id=Math.random().toString(36).slice(2,6);const k=['New key','sk_live_••••••••'+id,'just now'];KEYS.unshift(k);DB.keys=(DB.keys||[]);DB.keys.unshift(k);persist();renderKeys();toast('API key created');};
+
+/* ---------- persistence (acts like a backend until Layer 2 is wired) ---------- */
+const SK='nestava_demo_v1';let DB={};try{DB=JSON.parse(localStorage.getItem(SK))||{}}catch(e){DB={}}
+function persist(){try{localStorage.setItem(SK,JSON.stringify(DB))}catch(e){}}
+if(DB.tasksDone)TASKS.forEach((t,i)=>{if(typeof DB.tasksDone[i]==='boolean')t[2]=DB.tasksDone[i]});
+if(Array.isArray(DB.contacts))DB.contacts.forEach(c=>{if(!CONTACTS.find(x=>x.id===c.id))CONTACTS.push(c)});
+if(Array.isArray(DB.keys))DB.keys.forEach(k=>KEYS.unshift(k));
+
+/* ---------- chrome wiring: every button does something ---------- */
+function wireText(txt,fn){$$('button').forEach(b=>{const tx=(b.textContent||'').replace(/\s+/g,' ').trim();if(tx===txt){b.addEventListener('click',e=>{e.preventDefault();fn(b);});}});}
+$('#fsBtn').onclick=()=>{const d=document;if(!d.fullscreenElement){const p=d.documentElement.requestFullscreen&&d.documentElement.requestFullscreen();if(p&&p.catch)p.catch(()=>toast('Fullscreen is blocked in this embed — use the ⤢ expand control on the card'));else if(!p)toast('Use the ⤢ expand control on the card for fullscreen');}else{d.exitFullscreen&&d.exitFullscreen();}};
+$('#bellBtn').onclick=()=>toast('No new notifications');
+$('#whatsNew').onclick=()=>toast("What's new: AI co-pilot, compliance reviewer & Sites block editor");
+$('.org').onclick=()=>toast('Workspace · Carolina Coast Realty (demo brokerage)');
+$$('#nav a').forEach(a=>{[...a.childNodes].forEach(n=>{if(n.nodeType===3&&n.textContent.trim()){const s=document.createElement('span');s.className='lbl-t';s.textContent=n.textContent;n.replaceWith(s);}})});
+$('.side-foot .lk').onclick=()=>$('.app').classList.toggle('collapsed');
+const sIn=$('.topbar .searchbar input');sIn.addEventListener('keydown',e=>{if(e.key==='Enter'){const v=sIn.value.trim();if(/\d/.test(v)){runDD(v);show('dd');}else if(v){toast('Searching “'+v+'”…');}}});
+wireText('Copy embed code',()=>copyText('<script src="https://'+BRAND.toLowerCase()+'.app/embed/widget.js"></scr'+'ipt>'));
+wireText('Submit to Broker',()=>toast('Submitted to broker review queue'));
+wireText('Send for signature',()=>toast('Sent for e-signature via DocuSeal (demo)'));
+wireText('Connect',()=>toast('MCP endpoint copied — add to your Claude Desktop config'));
+wireText('New site',()=>toast('New site draft created from a starter theme'));
+wireText('Add contact',()=>addContact());
+function addContact(){const n=CONTACTS.length;const c={id:1000+n,name:'New Lead '+(n+1),init:'NL',status:'New Lead',tag:'teal',src:'Manual',role:'New contact',pre:'Not started',prop:'—',notes:'Added just now. Edit details, enroll in a sequence, or run DD.',docs:'—',acts:[['Just now','Contact created in CRM']]};CONTACTS.push(c);DB.contacts=(DB.contacts||[]).concat([c]);persist();crmSel=c.id;renderCrmList($('#crmFilter').value);renderCrmDetail(c.id);toast('Contact added & saved');}
+
+/* ---------- init ---------- */
+renderDashboard();renderDD(OAK);renderCrmList();renderCrmDetail(crmSel);renderProspect();calc();renderTx();renderKeys();
+$('#crmFilter').addEventListener('input',e=>renderCrmList(e.target.value));
+</script>
+</body>
+</html>

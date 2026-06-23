@@ -1,0 +1,11 @@
+app = "nestava-api"
+primary_region = "iad"
+[build]
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = true
+  min_machines_running = 1
+[env]
+  PORT = "8787"
+# secrets: fly secrets set DATABASE_URL=... CLERK_SECRET_KEY=... STRIPE_SECRET_KEY=...
