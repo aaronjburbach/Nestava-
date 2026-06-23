@@ -871,7 +871,7 @@ async function hydrate(){
   if(ct.data){CONTACTS.length=0;ct.data.forEach(function(c){CONTACTS.push(mapContact(c,ac.data||[]));});crmSel=CONTACTS[0]?CONTACTS[0].id:null;}
   if(rp.data){RECENT.length=0;rp.data.forEach(function(x){RECENT.push([x.property_address,x.type+' · '+timeAgo(x.created_at),Number(x.risk_score)]);});}
   if(ld.data){LEADS.length=0;ld.data.forEach(function(l){LEADS.push([l.address,l.owner,l.type,l.score,l.id,l.skip_traced]);});}
-  renderDashboard();renderProspect();renderCrmList(document.getElementById('crmFilter')?document.getElementById('crmFilter').value:'');if(crmSel)renderCrmDetail(crmSel);
+  renderDashboard();renderProspect();renderCrmList(document.getElementById('crmFilter')?document.getElementById('crmFilter').value:'');if(crmSel){renderCrmDetail(crmSel);}else{var _cd=document.getElementById('crmDetail');if(_cd)_cd.innerHTML='<div class="card cp" style="color:var(--muted);font-size:13.5px">No contacts yet. Click <b>Add contact</b> above, or add a lead from Prospect.</div>';}
  }catch(e){console.warn('hydrate',e);}
 }
 
@@ -923,6 +923,10 @@ async function applyOrgStats(session){
   var v=document.querySelectorAll('#view-dashboard .grid.c4 .stat .v');
   if(v.length>=4){v[0].textContent=listings;v[1].textContent=pipeline>=1e6?('$'+(pipeline/1e6).toFixed(1)+'M'):(pipeline>0?('$'+Math.round(pipeline/1000)+'K'):'$0');v[2].textContent=closings;v[3].textContent=reports;}
   document.querySelectorAll('#view-dashboard .grid.c4 .stat .delta').forEach(function(d){d.style.display='none';});
+  var open=0;try{open=TASKS.filter(function(t){return !t[2];}).length;}catch(e2){}var pp=document.querySelector('#view-dashboard .ph p');if(pp)pp.innerHTML='You have <b id="taskCount">'+open+'</b> open '+(open===1?'task':'tasks')+' today.';
+  var chartCard=null;document.querySelectorAll('#view-dashboard .card.cp').forEach(function(cc){if(cc.querySelector('#sparkLine'))chartCard=cc;});
+  if(chartCard){var mut=chartCard.querySelector('.sec-t .mut');if(mut)mut.textContent='· last 30 days · '+reports+' total';var bdg=chartCard.querySelector('.sec-t .badge');if(bdg)bdg.style.display=reports>0?'':'none';}
+  if(reports===0){var sl=document.getElementById('sparkLine'),sa=document.getElementById('sparkArea');if(sl)sl.setAttribute('d','M0 112 L800 112');if(sa)sa.setAttribute('d','M0 112 L800 112 L800 120 L0 120 Z');}
  }catch(e){}
 }
 
@@ -947,7 +951,7 @@ renderProspect=function(f){if(!f){var a=document.querySelector('#prospectFilter 
  body.querySelectorAll('[data-st]').forEach(function(b){if(b.disabled)return;b.onclick=async function(e){e.stopPropagation();var id=b.dataset.st;try{if(sb&&id)await sb.from('prospect_leads').update({skip_traced:true}).eq('id',id);}catch(err){}var L=LEADS.find(function(x){return String(x[4])===String(id);});if(L)L[5]=true;toast('Skip-trace complete — DNC-scrubbed');renderProspect(f);renderProspectStats();};});
  body.querySelectorAll('[data-crm]').forEach(function(b){b.onclick=function(e){e.stopPropagation();var p=b.dataset.crm.split('|');addLeadToCrm(decodeURIComponent(p[0]),decodeURIComponent(p[1]));};});
  body.querySelectorAll('tr[data-addr]').forEach(function(tr){tr.onclick=function(){var a=decodeURIComponent(tr.dataset.addr);var L=LEADS.find(function(x){return x[0]===a;});if(L)showLeadDetail(L);};});};
-async function addLeadToCrm(addr,owner){try{if(!sb){toast('Sign in to save');return;}var r=await sb.from('contacts').insert({name:owner||'Owner',source:'Prospect',status:'New Lead',property_address:addr}).select().single();if(r.error){toast('Could not add to CRM');return;}toast((owner||'Lead')+' added to CRM');renderProspectStats();}catch(e){toast('Error adding to CRM');}}
+async function addLeadToCrm(addr,owner){try{if(!sb){toast('Sign in to save');return;}var r=await sb.from('contacts').insert({name:owner||'Owner',source:'Prospect',status:'New Lead',property_address:addr}).select().single();if(r.error){toast('Could not add to CRM');return;}try{if(typeof CONTACTS!=='undefined'&&typeof mapContact==='function'){CONTACTS.push(mapContact(r.data,[]));crmSel=r.data.id;if(typeof renderCrmList==='function')renderCrmList(document.getElementById('crmFilter')?document.getElementById('crmFilter').value:'');if(typeof renderCrmDetail==='function')renderCrmDetail(r.data.id);}}catch(e3){}toast((owner||'Lead')+' added to CRM');renderProspectStats();}catch(e){toast('Error adding to CRM');}}
 function showLeadDetail(l){var h=leadHash(l[0]);var m=document.getElementById('leadModal');if(!m){m=document.createElement('div');m.id='leadModal';m.style.cssText='position:fixed;inset:0;z-index:1100;display:none;align-items:center;justify-content:center;background:rgba(20,30,25,.45);padding:20px';m.innerHTML='<div id="leadCard" style="width:100%;max-width:440px;background:#fff;border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.25);padding:24px;font-family:var(--f)"></div>';document.body.appendChild(m);m.onclick=function(e){if(e.target===m)m.style.display='none';};}
  var c=document.getElementById('leadCard');var sc=l[3],col=sc>=85?'red':sc>=75?'amber':'green';
  c.innerHTML='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700">'+l[2]+'</div><div style="font-size:18px;font-weight:600;margin-top:3px">'+l[0]+'</div><div style="font-size:13px;color:var(--muted)">'+l[1]+'</div></div><div class="badge '+col+'" style="font-size:14px;padding:6px 12px">'+sc+'</div></div>'
