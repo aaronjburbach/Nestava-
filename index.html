@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
  --bg:#F7F6F0; --bg2:#FBFAF6; --fg:#1A1A14; --muted:#6E6E62; --muted2:#9C9C8E;
@@ -793,6 +794,89 @@ function addContact(){const n=CONTACTS.length;const c={id:1000+n,name:'New Lead 
 /* ---------- init ---------- */
 renderDashboard();renderDD(OAK);renderCrmList();renderCrmDetail(crmSel);renderProspect();calc();renderTx();renderKeys();
 $('#crmFilter').addEventListener('input',e=>renderCrmList(e.target.value));
+</script>
+<script>
+/* ===== Nestava live layer: Supabase auth + data (additive, with fallback) ===== */
+(function(){
+const SB_URL="https://xvyqpdkzckmnwpeglffc.supabase.co";
+const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2eXFwZGt6Y2ttbndwZWdsZmZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMjM0NDgsImV4cCI6MjA5Nzc5OTQ0OH0.29NHrExZRFi1G0w31PqIhTiflUgt6X-ZDwkD31jmVBM";
+let sb=null;
+try{ if(window.supabase&&window.supabase.createClient) sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}}); }catch(e){}
+
+function initials(n){return (n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'?';}
+function timeAgo(ts){if(!ts)return'';const d=new Date(ts),s=(Date.now()-d.getTime())/1000;if(s<3600)return Math.max(1,Math.floor(s/60))+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';if(s<172800)return'Yesterday';return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
+function statusTag(s){s=(s||'').toLowerCase();if(s==='hot')return'red';if(s.indexOf('under contract')>-1)return'green';if(s.indexOf('new')>-1)return'teal';return'amber';}
+function mapContact(c,acts){return {id:c.id,name:c.name,init:initials(c.name),status:c.status||'Lead',tag:statusTag(c.status),src:c.source||'—',role:(c.status==='Hot'?'Active buyer':'Contact'),pre:c.pre_approval||'Not started',prop:c.property_address||'—',notes:c.notes||'—',docs:'—',acts:(acts||[]).filter(a=>a.contact_id===c.id).map(a=>[timeAgo(a.created_at),a.body])};}
+
+/* hide app until authed; build login overlay */
+try{var _a=document.querySelector('.app'); if(_a)_a.style.display='none';}catch(e){}
+function setNotice(t){var n=document.getElementById('authNotice'); if(n)n.textContent=t||'';}
+function buildOverlay(){
+ if(document.getElementById('authScreen'))return;
+ var o=document.createElement('div');o.id='authScreen';
+ o.style.cssText='position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;background:#F7F6F0;padding:20px;font-family:var(--f)';
+ o.innerHTML='<div style="width:100%;max-width:380px;background:#fff;border:1px solid #E8E4D8;border-radius:16px;box-shadow:0 20px 50px rgba(15,76,70,.16);padding:30px">'
+ +'<div style="display:flex;align-items:center;gap:11px;margin-bottom:18px"><div style="width:40px;height:40px;border-radius:11px;background:#0F4C46;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 32 32" fill="none"><path d="M10 21 L16 11 L22 21" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="23.5" r="1.6" fill="#C2792E"/></svg></div><div style="font-weight:700;font-size:22px;letter-spacing:-.02em">Nestava</div></div>'
+ +'<div id="authTitle" style="font-size:18px;font-weight:600;margin-bottom:4px">Sign in to your workspace</div>'
+ +'<div style="font-size:13px;color:#6E6E62;margin-bottom:18px">Carolina Coast Realty</div>'
+ +'<label style="font-size:12.5px;font-weight:600;color:#6E6E62">Email</label>'
+ +'<input id="authEmail" type="email" autocomplete="email" style="width:100%;border:1px solid #E8E4D8;border-radius:10px;padding:11px 12px;margin:6px 0 12px;font-size:14px"/>'
+ +'<label style="font-size:12.5px;font-weight:600;color:#6E6E62">Password</label>'
+ +'<input id="authPass" type="password" autocomplete="current-password" style="width:100%;border:1px solid #E8E4D8;border-radius:10px;padding:11px 12px;margin:6px 0 14px;font-size:14px"/>'
+ +'<button id="authBtn" style="width:100%;background:#0F4C46;color:#fff;border-radius:10px;padding:12px;font-weight:600;font-size:14px;cursor:pointer">Sign in</button>'
+ +'<div id="authNotice" style="font-size:12.5px;color:#B23B3B;margin-top:10px;min-height:16px"></div>'
+ +'<div style="font-size:13px;color:#6E6E62;margin-top:8px"><span id="authToggleText">New here?</span> <a id="authToggle" style="color:#0F4C46;font-weight:600;cursor:pointer">Create an account</a></div></div>';
+ document.body.appendChild(o);
+ var mode='signin';
+ function setMode(m){mode=m;document.getElementById('authTitle').textContent=m==='signin'?'Sign in to your workspace':'Create your account';document.getElementById('authBtn').textContent=m==='signin'?'Sign in':'Create account';document.getElementById('authToggleText').textContent=m==='signin'?'New here?':'Have an account?';document.getElementById('authToggle').textContent=m==='signin'?'Create an account':'Sign in';setNotice('');}
+ document.getElementById('authToggle').onclick=function(){setMode(mode==='signin'?'signup':'signin');};
+ async function submit(){var email=document.getElementById('authEmail').value.trim(),pass=document.getElementById('authPass').value;if(!email||!pass){setNotice('Enter email and password.');return;}var btn=document.getElementById('authBtn');btn.textContent='…';try{if(mode==='signin'){var r=await sb.auth.signInWithPassword({email:email,password:pass});if(r.error)setNotice(r.error.message);}else{var r2=await sb.auth.signUp({email:email,password:pass});if(r2.error){setNotice(r2.error.message);}else if(!r2.data.session){setNotice('Account created — check your email to confirm, then sign in.');setMode('signin');}}}catch(e){setNotice(String(e&&e.message||e));}finally{btn.textContent=mode==='signin'?'Sign in':'Create account';}}
+ document.getElementById('authBtn').onclick=submit;
+ document.getElementById('authPass').addEventListener('keydown',function(e){if(e.key==='Enter')submit();});
+}
+function showLogin(){buildOverlay();var o=document.getElementById('authScreen');if(o)o.style.display='flex';var a=document.querySelector('.app');if(a)a.style.display='none';}
+function showApp(session){var o=document.getElementById('authScreen');if(o)o.style.display='none';var a=document.querySelector('.app');if(a)a.style.display='grid';setUser(session);wireSignOut();}
+function setUser(session){try{var u=session&&session.user;if(!u)return;var nm=(u.user_metadata&&u.user_metadata.name)||u.email;var who=document.querySelector('.side-foot .who');if(!who)return;var n=who.querySelector('.n'),r=who.querySelector('.r'),av=who.querySelector('.ava');if(n)n.textContent=nm;if(r)r.textContent=u.email;if(av)av.textContent=initials(nm);}catch(e){}}
+function wireSignOut(){var who=document.querySelector('.side-foot .who');if(who&&!who._wired){who._wired=true;who.style.cursor='pointer';who.title='Sign out';who.onclick=async function(){if(confirm('Sign out of Nestava?')){_hydrated=false;await sb.auth.signOut();}};}}
+
+/* overrides: live writes (safe even before login) */
+try{
+ var _rd=renderDashboard; renderDashboard=function(){_rd();patchTasks();};
+ var _oac=addContact; addContact=async function(){ if(!sb)return _oac(); try{var r=await sb.from('contacts').insert({name:'New contact',source:'Manual',status:'New Lead'}).select().single(); if(r.error){toast('Could not add: '+r.error.message);return;} CONTACTS.push(mapContact(r.data,[])); crmSel=r.data.id; renderCrmList(document.getElementById('crmFilter')?document.getElementById('crmFilter').value:''); renderCrmDetail(r.data.id); toast('Contact added & saved');}catch(e){toast('Error: '+(e.message||e));} };
+ var _og=genReport; genReport=function(t){ _og(t); try{ if(sb&&typeof currentProp!=='undefined'&&currentProp){ sb.from('dd_reports').insert({property_address:(currentProp.addr||'')+(currentProp.city?', '+currentProp.city:''),type:t,risk_score:Number(currentProp.risk)}).then(function(res){ if(!res.error)refreshRecent(); }); } }catch(e){} };
+}catch(e){}
+function patchTasks(){try{document.querySelectorAll('#taskList .task').forEach(function(el){el.onclick=function(){var i=+el.dataset.i;if(!TASKS[i])return;TASKS[i][2]=!TASKS[i][2];var id=TASKS[i][3];if(sb&&id){sb.from('tasks').update({done:TASKS[i][2]}).eq('id',id);}renderDashboard();};});}catch(e){}}
+async function refreshRecent(){if(!sb)return;try{var r=await sb.from('dd_reports').select('*').order('created_at',{ascending:false}).limit(6);if(r.data){RECENT.length=0;r.data.forEach(function(x){RECENT.push([x.property_address,x.type+' · '+timeAgo(x.created_at),Number(x.risk_score)]);});renderDashboard();}}catch(e){}}
+
+async function hydrate(){
+ if(!sb)return;
+ try{
+  var res=await Promise.all([
+   sb.from('tasks').select('*').order('created_at'),
+   sb.from('contacts').select('*').is('deleted_at',null).order('created_at'),
+   sb.from('activities').select('*').order('created_at',{ascending:false}),
+   sb.from('dd_reports').select('*').order('created_at',{ascending:false}).limit(6),
+   sb.from('prospect_leads').select('*').order('score',{ascending:false})
+  ]);
+  var tk=res[0],ct=res[1],ac=res[2],rp=res[3],ld=res[4];
+  if(tk.data){TASKS.length=0;tk.data.forEach(function(t){TASKS.push([t.title,'',!!t.done,t.id]);});}
+  if(ct.data){CONTACTS.length=0;ct.data.forEach(function(c){CONTACTS.push(mapContact(c,ac.data||[]));});crmSel=CONTACTS[0]?CONTACTS[0].id:null;}
+  if(rp.data){RECENT.length=0;rp.data.forEach(function(x){RECENT.push([x.property_address,x.type+' · '+timeAgo(x.created_at),Number(x.risk_score)]);});}
+  if(ld.data){LEADS.length=0;ld.data.forEach(function(l){LEADS.push([l.address,l.owner,l.type,l.score,l.id]);});}
+  renderDashboard();renderProspect();renderCrmList(document.getElementById('crmFilter')?document.getElementById('crmFilter').value:'');if(crmSel)renderCrmDetail(crmSel);
+ }catch(e){console.warn('hydrate',e);}
+}
+
+/* bootstrap */
+var _hydrated=false;
+async function onLogin(session){showApp(session);if(!_hydrated){_hydrated=true;await hydrate();}}
+buildOverlay();showLogin();
+if(!sb){setNotice('Could not load sign-in. Please refresh.');}
+else{
+ sb.auth.getSession().then(function(r){ (r.data&&r.data.session)?onLogin(r.data.session):showLogin(); });
+ sb.auth.onAuthStateChange(function(_e,session){ session?onLogin(session):showLogin(); });
+}
+})();
 </script>
 </body>
 </html>
