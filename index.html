@@ -1170,13 +1170,26 @@ function mktMountDesign(type,inp,c){
 }
 function mktFit(W,H){var stage=document.getElementById('mktStage');var wrap=document.getElementById('mktCanvasWrap');var scaler=document.getElementById('mktScaler');if(!stage||!wrap||!scaler)return;var avail=Math.min((stage.clientWidth||400)-2,460);var s=Math.min(1,avail/W);scaler.style.transform='scale('+s+')';scaler.style.transformOrigin='top left';wrap.style.width=(W*s)+'px';wrap.style.height=(H*s)+'px';}
 function mktImagesReady(node){var imgs=[].slice.call(node.querySelectorAll('img'));return Promise.all(imgs.map(function(im){return (im.complete&&im.naturalWidth)?Promise.resolve():new Promise(function(res){im.onload=res;im.onerror=res;setTimeout(res,2500);});}));}
+async function mktRasterize(){
+ // Capture an OFF-SCREEN, un-scaled clone so html2canvas isn't thrown off by the
+ // preview's CSS transform:scale on an ancestor (which squashes the output).
+ var node=document.getElementById('mktDesign');if(!node)return null;if(!window.html2canvas)return null;
+ var W=node.offsetWidth||1080,H=node.offsetHeight||1080;
+ var clone=node.cloneNode(true);
+ clone.style.transform='none';clone.style.margin='0';clone.style.position='fixed';clone.style.left='-100000px';clone.style.top='0';clone.style.width=W+'px';clone.style.height=H+'px';
+ document.body.appendChild(clone);
+ try{
+  await mktImagesReady(clone);
+  await new Promise(function(r){setTimeout(r,60);});
+  var canvas=await html2canvas(clone,{useCORS:true,scale:2,backgroundColor:'#ffffff',logging:false,width:W,height:H,windowWidth:W,windowHeight:H,scrollX:0,scrollY:0});
+  return canvas;
+ }finally{ if(clone&&clone.parentNode)clone.parentNode.removeChild(clone); }
+}
 async function mktExport(content,save){
- var node=document.getElementById('mktDesign');if(!node)return;
  if(!window.html2canvas){toast('Renderer still loading — try again in a second');return;}
  toast(save?'Saving…':'Rendering image…');
  try{
-  await mktImagesReady(node);
-  var canvas=await html2canvas(node,{useCORS:true,scale:2,backgroundColor:'#ffffff',logging:false,width:node.offsetWidth,height:node.offsetHeight,windowWidth:node.offsetWidth,windowHeight:node.offsetHeight});
+  var canvas=await mktRasterize();if(!canvas){toast('Could not render');return;}
   if(!save){var a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download=((content.title||'nestava-asset').replace(/[^a-z0-9]+/gi,'-').toLowerCase().replace(/^-+|-+$/g,''))+'.png';document.body.appendChild(a);a.click();a.remove();toast('Downloaded');return;}
   var blob=await new Promise(function(r){canvas.toBlob(r,'image/png',0.92);});
   var url=null;
