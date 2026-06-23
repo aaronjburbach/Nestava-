@@ -1,4 +1,5 @@
 // Nestava — AI marketing copy generator (Vercel serverless function)
+// build: groq-enabled (redeploy to pick up GROQ_API_KEY)
 // Runs on Vercel's Node runtime. Uses whichever LLM API key is present in the
 // project's Environment Variables. If no key is set (or the call fails), it
 // returns { ok:false } and the browser falls back to built-in templates, so the
