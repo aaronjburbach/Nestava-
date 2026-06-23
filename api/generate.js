@@ -57,7 +57,7 @@ function buildPrompt(type, inputs) {
     '  "headline" — ONE short, punchy marketing line, max ~8 words, no price, no hashtags (used as the big headline on a flyer/graphic)\n' +
     '  "bullets"  — an array of 5 to 6 SHORT feature phrases (3-6 words each, no leading dash), the kind printed on a listing flyer\n' +
     '  "caption"  — a ready-to-post caption. For social posts include 4-7 relevant hashtags on the final line. For email start with "Subject: ..." then the body with a {{first_name}} merge field. For other types, a 1-2 sentence caption.\n' +
-    '  "body"     — the full long-form copy where it applies (landing page description, full email, market update, or ad with PRIMARY TEXT / HEADLINE / DESCRIPTION / CTA labels). For flyer/social this can repeat the caption.\n' +
+    '  "body"     — the full copy written ONLY in the format that fits ' + want + ': for an email, the subject line then the email body (no other labels); for a landing-page description, flowing multi-paragraph prose; for a market update, the post text; for a lead ad, label the parts PRIMARY TEXT / HEADLINE / DESCRIPTION / CTA BUTTON. Never add section labels that do not belong to this asset type. For a flyer or social post, just repeat the caption here.\n' +
     'Populate every field that is relevant to ' + (want) + '. No markdown, no commentary — just the JSON object.';
 }
 
