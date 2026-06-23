@@ -1,22 +1,17 @@
 // Nestava — AI marketing copy generator (Vercel serverless function)
-// build: groq-enabled (redeploy to pick up GROQ_API_KEY)
+// build: groq-enabled, structured output for designed assets
+//
 // Runs on Vercel's Node runtime. Uses whichever LLM API key is present in the
 // project's Environment Variables. If no key is set (or the call fails), it
-// returns { ok:false } and the browser falls back to built-in templates, so the
-// Create studio always produces something.
+// returns { ok:false } and the browser falls back to built-in templates.
 //
-// To turn on real AI: add ONE of these env vars in Vercel → Settings →
-// Environment Variables, then redeploy:
-//   OPENAI_API_KEY        (OpenAI,      model gpt-4o-mini)
-//   GROQ_API_KEY          (Groq,        model llama-3.3-70b-versatile)  ← free tier
-//   PERPLEXITY_API_KEY    (Perplexity,  model sonar)
-//   ANTHROPIC_API_KEY     (Anthropic,   model claude-3-5-haiku-latest)
+// Env keys (any one): OPENAI_API_KEY | GROQ_API_KEY | PERPLEXITY_API_KEY | ANTHROPIC_API_KEY
 
 const PROVIDERS = [
-  { env: 'OPENAI_API_KEY',     kind: 'openai',    url: 'https://api.openai.com/v1/chat/completions',     model: 'gpt-4o-mini',               json: true  },
-  { env: 'GROQ_API_KEY',       kind: 'openai',    url: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.3-70b-versatile',   json: true  },
-  { env: 'PERPLEXITY_API_KEY', kind: 'openai',    url: 'https://api.perplexity.ai/chat/completions',      model: 'sonar',                    json: false },
-  { env: 'ANTHROPIC_API_KEY',  kind: 'anthropic', url: 'https://api.anthropic.com/v1/messages',           model: 'claude-3-5-haiku-latest',  json: false }
+  { env: 'OPENAI_API_KEY',     kind: 'openai',    url: 'https://api.openai.com/v1/chat/completions',     model: 'gpt-4o-mini',              json: true  },
+  { env: 'GROQ_API_KEY',       kind: 'openai',    url: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.3-70b-versatile', json: true  },
+  { env: 'PERPLEXITY_API_KEY', kind: 'openai',    url: 'https://api.perplexity.ai/chat/completions',      model: 'sonar',                  json: false },
+  { env: 'ANTHROPIC_API_KEY',  kind: 'anthropic', url: 'https://api.anthropic.com/v1/messages',           model: 'claude-3-5-haiku-latest', json: false }
 ];
 
 function pickProvider() {
@@ -25,20 +20,20 @@ function pickProvider() {
 }
 
 const LABELS = {
-  page:          'a single-property landing page: a strong headline, then 2-3 short descriptive paragraphs, then a bulleted list of 5-6 standout features, ending with a clear call to action',
-  flyer:         'a printable listing flyer: a punchy headline, the key facts line, 5-6 feature bullets, an "Open House" line, and a closing contact line',
-  social_listed: 'an upbeat "Just Listed" social post: 2-4 short lines that build excitement, then 5-7 relevant hashtags on the last line',
-  social_open:   'an inviting "Open House" social post: mention the day/time (use a clear placeholder if unknown), 2-4 short lines, then 5-7 hashtags',
-  social_sold:   'a celebratory "Just Sold" social post that quietly builds the agent\'s credibility and invites new clients, then 5-7 hashtags',
-  email:         'a marketing email. Begin with a line "Subject: ..." then a warm, concise body addressed with a {{first_name}} merge field, one clear call to action, and a friendly sign-off',
-  market:        'a professional local market-update post for LinkedIn: one tight insight paragraph, a practical takeaway for buyers and sellers, then 4-6 hashtags',
-  ad:            'a paid lead ad. Clearly label the parts on their own lines: PRIMARY TEXT:, HEADLINE:, DESCRIPTION:, CTA BUTTON:'
+  flyer:         'a printable LISTING FLYER for a home',
+  social_listed: 'a "Just Listed" social media post',
+  social_open:   'an "Open House" social media post',
+  social_sold:   'a "Just Sold" social media post',
+  page:          'a single-property landing-page description',
+  email:         'a marketing email to a contact list',
+  market:        'a local real-estate market-update post',
+  ad:            'a paid lead-generation ad'
 };
 
 const SYSTEM =
-  'You are an expert real estate marketing copywriter. Write polished, specific, ready-to-publish copy an agent can use immediately with at most light edits. Keep it vivid but never cheesy, and vary your wording every time so regenerations feel fresh. ' +
-  'Strictly follow U.S. Fair Housing rules: describe the PROPERTY and NEIGHBORHOOD only — never reference or imply race, color, religion, sex, familial status, national origin, disability, or what kind of person "should" live there. ' +
-  'Never fabricate specific facts that were not provided (no invented school names, exact distances, tax or HOA dollar amounts, or award claims). When a detail is unknown, write around it gracefully.';
+  'You are an expert real estate marketing copywriter and art director. Write polished, specific, ready-to-publish copy an agent can use immediately. Be vivid but never cheesy, and vary wording each time so regenerations feel fresh. ' +
+  'Strictly follow U.S. Fair Housing rules: describe the PROPERTY and NEIGHBORHOOD only — never reference or imply race, color, religion, sex, familial status, national origin, disability, or who "should" live there. ' +
+  'Never fabricate specific facts that were not provided (no invented school names, exact distances, tax/HOA amounts, or awards). When a detail is unknown, write around it gracefully.';
 
 function fmtPrice(v) { var n = Number(v); return (v && !isNaN(n)) ? '$' + n.toLocaleString() : null; }
 
@@ -49,15 +44,21 @@ function buildPrompt(type, inputs) {
     i.beds ? 'Bedrooms: ' + i.beds : null,
     i.baths ? 'Bathrooms: ' + i.baths : null,
     i.sqft ? 'Square feet: ' + i.sqft : null,
-    fmtPrice(i.price) ? 'List price: ' + fmtPrice(i.price) : null
+    fmtPrice(i.price) ? 'List price: ' + fmtPrice(i.price) : null,
+    i.highlights ? 'Agent highlights to feature: ' + i.highlights : null,
+    (i.ohDate || i.ohTime) ? 'Open house: ' + [i.ohDate, i.ohTime].filter(Boolean).join(' ') : null
   ].filter(Boolean).join('\n');
   var want = LABELS[type] || 'a real estate marketing asset';
-  return 'Write ' + want + '.\n\n' +
+
+  return 'Create the copy for ' + want + '.\n\n' +
     'Property details:\n' + (facts || '(No specific details were given — write compelling general copy the agent can personalize.)') + '\n\n' +
-    'Return ONLY a JSON object with exactly two string fields:\n' +
-    '  "title" — a short internal name for this asset (e.g. "Just Listed — 1234 Oak St")\n' +
-    '  "body"  — the finished copy, using real line breaks (\\n) between lines and paragraphs.\n' +
-    'No markdown, no commentary, just the JSON object.';
+    'Return ONLY a JSON object with these fields (use real \\n line breaks inside strings):\n' +
+    '  "title"    — a short internal name for this asset (e.g. "Just Listed — 1234 Oak St")\n' +
+    '  "headline" — ONE short, punchy marketing line, max ~8 words, no price, no hashtags (used as the big headline on a flyer/graphic)\n' +
+    '  "bullets"  — an array of 5 to 6 SHORT feature phrases (3-6 words each, no leading dash), the kind printed on a listing flyer\n' +
+    '  "caption"  — a ready-to-post caption. For social posts include 4-7 relevant hashtags on the final line. For email start with "Subject: ..." then the body with a {{first_name}} merge field. For other types, a 1-2 sentence caption.\n' +
+    '  "body"     — the full long-form copy where it applies (landing page description, full email, market update, or ad with PRIMARY TEXT / HEADLINE / DESCRIPTION / CTA labels). For flyer/social this can repeat the caption.\n' +
+    'Populate every field that is relevant to ' + (want) + '. No markdown, no commentary — just the JSON object.';
 }
 
 async function callOpenAICompat(p, prompt) {
@@ -65,7 +66,7 @@ async function callOpenAICompat(p, prompt) {
     model: p.model,
     messages: [ { role: 'system', content: SYSTEM }, { role: 'user', content: prompt } ],
     temperature: 0.9,
-    max_tokens: 1000
+    max_tokens: 1100
   };
   if (p.json) payload.response_format = { type: 'json_object' };
   var r = await fetch(p.url, {
@@ -82,7 +83,7 @@ async function callAnthropic(p, prompt) {
   var r = await fetch(p.url, {
     method: 'POST',
     headers: { 'x-api-key': process.env[p.env], 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: p.model, max_tokens: 1000, temperature: 0.9, system: SYSTEM, messages: [ { role: 'user', content: prompt } ] })
+    body: JSON.stringify({ model: p.model, max_tokens: 1100, temperature: 0.9, system: SYSTEM, messages: [ { role: 'user', content: prompt } ] })
   });
   if (!r.ok) throw new Error('provider ' + r.status + ': ' + (await r.text()).slice(0, 200));
   var j = await r.json();
@@ -94,7 +95,7 @@ function parseResult(txt) {
   try { return JSON.parse(txt); } catch (e) {}
   var m = txt.match(/\{[\s\S]*\}/);
   if (m) { try { return JSON.parse(m[0]); } catch (e) {} }
-  return { title: '', body: String(txt).trim() }; // last resort: use raw text as body
+  return { body: String(txt).trim() };
 }
 
 async function readBody(req) {
@@ -113,7 +114,6 @@ async function readBody(req) {
 export default async function handler(req, res) {
   var provider = pickProvider();
 
-  // Health check / config probe
   if (req.method === 'GET') {
     res.status(200).json({ ok: true, service: 'nestava-generate', configured: !!provider, provider: provider ? provider.env.replace('_API_KEY', '').toLowerCase() : null });
     return;
@@ -126,8 +126,19 @@ export default async function handler(req, res) {
     var prompt = buildPrompt(data.type, data.inputs);
     var raw = provider.kind === 'anthropic' ? await callAnthropic(provider, prompt) : await callOpenAICompat(provider, prompt);
     var parsed = parseResult(raw) || {};
-    if (!parsed.body || !String(parsed.body).trim()) { res.status(200).json({ ok: false, error: 'empty_result' }); return; }
-    res.status(200).json({ ok: true, ai: true, title: parsed.title || '', body: String(parsed.body).trim() });
+    var bullets = Array.isArray(parsed.bullets) ? parsed.bullets.map(function (b) { return String(b).replace(/^[-•\s]+/, '').trim(); }).filter(Boolean).slice(0, 6) : [];
+    var out = {
+      title:    parsed.title    ? String(parsed.title).trim()    : '',
+      headline: parsed.headline ? String(parsed.headline).trim() : '',
+      bullets:  bullets,
+      caption:  parsed.caption  ? String(parsed.caption).trim()  : '',
+      body:     parsed.body     ? String(parsed.body).trim()     : ''
+    };
+    if (!out.body && !out.caption && !out.headline && !out.bullets.length) {
+      res.status(200).json({ ok: false, error: 'empty_result' });
+      return;
+    }
+    res.status(200).json(Object.assign({ ok: true, ai: true }, out));
   } catch (e) {
     res.status(200).json({ ok: false, error: 'provider_error', message: String((e && e.message) || e).slice(0, 300) });
   }

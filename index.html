@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 :root{
  --bg:#F7F6F0; --bg2:#FBFAF6; --fg:#1A1A14; --muted:#6E6E62; --muted2:#9C9C8E;
@@ -944,7 +945,7 @@ var CAMPAIGNS=[];
 async function loadCampaigns(){if(!sb)return;try{var el=document.getElementById('mktList');if(!el)return;var r=await sb.from('campaigns').select('*').order('created_at',{ascending:false});CAMPAIGNS=r.data||[];if(!CAMPAIGNS.length){el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:10px 0">No campaigns yet — go to <b>Create</b>, generate an asset and click <b>Save</b>. It will appear here, and you can click it to view the full content.</div>';return;}el.innerHTML=CAMPAIGNS.map(function(c){var snip=(c.body||'').replace(/\n/g,' ').slice(0,72);return '<div class="row" data-cid="'+c.id+'" style="cursor:pointer"><div class="meta"><div class="t">'+(c.title||c.kind||'Campaign')+'</div><div class="s">'+(snip||((c.channel||'')+' · '+(c.status||'')))+'</div></div><div class="end"><span class="badge teal">'+(c.kind||'')+'</span> <span style="color:var(--muted2);font-weight:700">›</span></div></div>';}).join('');el.querySelectorAll('[data-cid]').forEach(function(rw){rw.onclick=function(){var c=CAMPAIGNS.find(function(x){return String(x.id)===String(rw.dataset.cid);});if(c)openCampaign(c);};});}catch(e){}}
 function openCampaign(c){var m=document.getElementById('campModal');if(!m){m=document.createElement('div');m.id='campModal';m.style.cssText='position:fixed;inset:0;z-index:1100;display:none;align-items:center;justify-content:center;background:rgba(20,30,25,.45);padding:20px';m.innerHTML='<div id="campCard" style="width:100%;max-width:560px;background:#fff;border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.25);font-family:var(--f);max-height:86vh;overflow:auto"></div>';document.body.appendChild(m);m.onclick=function(e){if(e.target===m)m.style.display='none';};}
  var card=document.getElementById('campCard');var canPub=!!MKT_CONN[c.channel];
- card.innerHTML='<div style="background:var(--bg2);border-bottom:1px solid var(--line);padding:14px 18px;display:flex;align-items:center;gap:8px"><span class="badge teal">'+(c.kind||'Asset')+'</span>'+(c.channel&&c.channel!=='-'?'<span class="mut" style="font-size:12px">to '+chName(c.channel)+'</span>':'')+'<span class="badge '+(c.status==='scheduled'?'amber':'gray')+'" style="margin-left:auto">'+(c.status||'ready')+'</span></div><div style="padding:18px"><div style="font-weight:600;font-size:15px;margin-bottom:10px">'+(c.title||'')+'</div><div style="font-size:13.5px;line-height:1.65;white-space:pre-wrap;border:1px solid var(--line);border-radius:10px;padding:14px">'+((c.body||'(no content saved)').replace(/</g,'&lt;'))+'</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn btn-ghost btn-sm" id="cvCopy">Copy</button>'+(c.channel&&c.channel!=='-'?'<button class="btn btn-pri btn-sm" id="cvPub">'+(canPub?'Publish to '+chName(c.channel):'Connect '+chName(c.channel))+'</button>':'')+'<button class="btn btn-ghost btn-sm" id="cvDel" style="color:var(--danger)">Delete</button><button class="btn btn-ghost btn-sm" id="cvClose" style="margin-left:auto">Close</button></div></div>';
+ card.innerHTML='<div style="background:var(--bg2);border-bottom:1px solid var(--line);padding:14px 18px;display:flex;align-items:center;gap:8px"><span class="badge teal">'+(c.kind||'Asset')+'</span>'+(c.channel&&c.channel!=='-'?'<span class="mut" style="font-size:12px">to '+chName(c.channel)+'</span>':'')+'<span class="badge '+(c.status==='scheduled'?'amber':'gray')+'" style="margin-left:auto">'+(c.status||'ready')+'</span></div><div style="padding:18px"><div style="font-weight:600;font-size:15px;margin-bottom:10px">'+(c.title||'')+'</div>'+(c.media_url?'<img src="'+c.media_url+'" style="width:100%;border-radius:10px;border:1px solid var(--line);margin-bottom:12px;display:block"/>':'')+'<div style="font-size:13.5px;line-height:1.65;white-space:pre-wrap;border:1px solid var(--line);border-radius:10px;padding:14px">'+((c.body||'(no content saved)').replace(/</g,'&lt;'))+'</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn btn-ghost btn-sm" id="cvCopy">Copy</button>'+(c.media_url?'<a class="btn btn-amber btn-sm" href="'+c.media_url+'" target="_blank" rel="noopener" download>Download</a>':'')+(c.channel&&c.channel!=='-'?'<button class="btn btn-pri btn-sm" id="cvPub">'+(canPub?'Publish to '+chName(c.channel):'Connect '+chName(c.channel))+'</button>':'')+'<button class="btn btn-ghost btn-sm" id="cvDel" style="color:var(--danger)">Delete</button><button class="btn btn-ghost btn-sm" id="cvClose" style="margin-left:auto">Close</button></div></div>';
  m.style.display='flex';
  document.getElementById('cvCopy').onclick=function(){copyText(c.body||'');};
  document.getElementById('cvClose').onclick=function(){m.style.display='none';};
@@ -1042,13 +1043,11 @@ function chName(c){for(var i=0;i<CHANNELS.length;i++)if(CHANNELS[i][0]===c)retur
 function mval(id){var e=document.getElementById(id);return e?e.value:'';}
 function rebuildMarketing(){if(_mktBuilt)return;var v=document.getElementById('view-marketing');if(!v)return;_mktBuilt=true;
  v.innerHTML='<div class="ph"><h1>Marketing</h1><p>Generate every marketing asset, save it, and publish to your connected channels — all on your brand.</p></div><div class="mtabs" id="mktTabs"><button class="active" data-mt="create">Create</button><button data-mt="campaigns">Campaigns</button><button data-mt="channels">Channels</button></div><div id="mt-create"></div><div id="mt-campaigns" style="display:none"></div><div id="mt-channels" style="display:none"></div>';
- document.getElementById('mt-create').innerHTML='<div class="card cp"><div class="sec-t">Create an asset</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" id="mktTypes">'+ASSETS.map(function(a){return '<span class="chip'+(a[0]===MKT_TYPE?' active':'')+'" data-at="'+a[0]+'">'+a[1]+'</span>';}).join('')+'</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px"><div class="field" style="margin:0;grid-column:1/-1"><label>Address / area</label><input id="mAddr" value="1234 Oak St, Wilmington NC"/></div><div class="field" style="margin:0"><label>Beds</label><input id="mBeds" type="number" value="4"/></div><div class="field" style="margin:0"><label>Baths</label><input id="mBaths" type="number" value="3"/></div><div class="field" style="margin:0"><label>Sq ft</label><input id="mSqft" type="number" value="2840"/></div><div class="field" style="margin:0"><label>Price</label><input id="mPrice" type="number" value="492000"/></div></div><div style="display:flex;gap:10px;margin-top:8px"><button class="btn btn-amber" id="mGen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="4"/></svg>Generate</button><button class="btn btn-ghost" id="mRegen" style="display:none">Regenerate</button></div><div id="mOut"></div></div>';
+ document.getElementById('mt-create').innerHTML=mktCreateHTML();
  document.getElementById('mt-campaigns').innerHTML='<div class="card cp"><div class="sec-t">Saved campaigns <span class="link" id="mktReload" style="margin-left:auto">Refresh</span></div><div id="mktList"></div></div>';
  document.getElementById('mt-channels').innerHTML='<div class="card cp"><div class="sec-t">Channels <span class="mut">· connect once, publish everywhere</span></div><div class="grid c3" id="chGrid"></div><div class="note" style="margin-top:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>Connecting records the channel here and routes assets to it. Live posting/sending activates once the provider account (Meta, Google, your email domain, MLS) is linked — we wire each when you are ready.</div></div>';
  v.querySelectorAll('#mktTabs button').forEach(function(b){b.onclick=function(){v.querySelectorAll('#mktTabs button').forEach(function(x){x.classList.remove('active');});b.classList.add('active');MKT_TAB=b.dataset.mt;['create','campaigns','channels'].forEach(function(t){document.getElementById('mt-'+t).style.display=(t===MKT_TAB?'block':'none');});if(MKT_TAB==='campaigns')loadCampaigns();if(MKT_TAB==='channels')renderChannels();};});
- document.getElementById('mktTypes').querySelectorAll('.chip').forEach(function(c){c.onclick=function(){MKT_TYPE=c.dataset.at;document.getElementById('mktTypes').querySelectorAll('.chip').forEach(function(x){x.classList.remove('active');});c.classList.add('active');};});
- document.getElementById('mGen').onclick=function(){MKT_SEED=Math.floor(Math.random()*9999);mktAI();};
- document.getElementById('mRegen').onclick=function(){MKT_SEED++;mktAI();};
+ wireMktCreate();
  document.getElementById('mktReload').onclick=loadCampaigns;
  loadChannels();}
 function mktGenerate(_pre,_ai){var inp={addr:mval('mAddr'),beds:mval('mBeds'),baths:mval('mBaths'),sqft:mval('mSqft'),price:mval('mPrice'),area:(mval('mAddr').split(',')[1]||'').trim()||(mval('mAddr').split(',')[0]||'the area')};var a=_pre||genAsset(MKT_TYPE,inp,MKT_SEED);document.getElementById('mRegen').style.display='inline-flex';
@@ -1093,6 +1092,141 @@ function openConnect(ch){var m=document.getElementById('connectModal');if(!m){m=
  m.style.display='flex';
  document.getElementById('cnClose').onclick=function(){m.style.display='none';};
  document.getElementById('cnMark').onclick=async function(){try{if(sb)await sb.from('integrations').insert({channel:ch,status:'connected'});}catch(e){}MKT_CONN[ch]=true;m.style.display='none';toast(chName(ch)+' connected');renderChannels();};}
+
+/* ===== Marketing Studio v2 (photo-based designed assets + AI copy) ===== */
+var MKT_CATALOG=[{t:'flyer',label:'Listing Flyer',sub:'Printable design'},{t:'social_listed',label:'Just Listed',sub:'Social graphic'},{t:'social_open',label:'Open House',sub:'Social graphic'},{t:'social_sold',label:'Just Sold',sub:'Social graphic'},{t:'page',label:'Property Website',sub:'Page copy'},{t:'email',label:'Email Blast',sub:'Subject + body'},{t:'market',label:'Market Update',sub:'Post copy'},{t:'ad',label:'Lead Ad',sub:'Ad copy'}];
+var MKT_KINDMAP={flyer:['Listing flyer','-'],social_listed:['Just-Listed post','facebook'],social_open:['Open-House post','instagram'],social_sold:['Just-Sold post','facebook'],page:['Single-property page','mls_idx'],email:['Email blast','email'],market:['Market update','linkedin'],ad:['Lead ad (Meta/Google)','meta_ads']};
+var MKT_DESIGN={flyer:1,social_listed:1,social_open:1,social_sold:1};
+var MKT_PHOTOS=[];var MKT_LAST=null;MKT_TYPE='flyer';
+var ICON_UP='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 16V6M8 10l4-4 4 4"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>';
+var ICON_SPARK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="3.4"/></svg>';
+function mktIcon(t){var p={flyer:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',social_listed:'<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M5 18l5-4 4 3 2-2 3 3"/>',social_open:'<path d="M3 11l9-7 9 7"/><path d="M5 10v9h14v-9"/><path d="M10 19v-5h4v5"/>',social_sold:'<path d="M20 7L9 18l-5-5"/>',page:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 13h7"/>',email:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',market:'<path d="M4 19V5M4 19h16M8 16l3-4 3 2 4-6"/>',ad:'<path d="M3 11v2a1 1 0 001 1h3l5 4V6L7 10H4a1 1 0 00-1 1z"/><path d="M16 9a3 3 0 010 6"/>'};return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+(p[t]||p.page)+'</svg>';}
+function mktEsc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return c==='&'?'&amp;':c==='<'?'&lt;':'&gt;';});}
+function mktBrokerage(){var el=document.querySelector('.org .nm');return (el&&(el.textContent||'').trim())||'Your Brokerage';}
+var MARK_W='<svg width="22" height="22" viewBox="0 0 32 32" fill="none"><path d="M9 21 L16 10 L23 21" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="23.5" r="1.7" fill="#C2792E"/></svg>';
+function mktCreateHTML(){
+ return ''
+ +'<div class="card cp" style="margin-bottom:14px"><div class="sec-t">1 · What do you want to create?</div><div class="mkt-types" id="mktTypes">'+MKT_CATALOG.map(function(a){return '<button type="button" class="mkt-type'+(a.t===MKT_TYPE?' on':'')+'" data-at="'+a.t+'"><span class="mkt-ic">'+mktIcon(a.t)+'</span><span class="mkt-tl">'+a.label+'</span><span class="mkt-ts">'+a.sub+'</span></button>';}).join('')+'</div></div>'
+ +'<div class="mkt-grid">'
+ +'<div class="card cp"><div class="sec-t">2 · Property details</div>'
+ +'<label class="mkt-drop" id="mktDrop"><input type="file" id="mktFile" accept="image/*" multiple><span class="mkt-drop-ic">'+ICON_UP+'</span><span class="mkt-drop-t"><b>Upload property photos</b><span>JPG or PNG · the first photo becomes the cover</span></span></label>'
+ +'<div class="mkt-thumbs" id="mktThumbs"></div>'
+ +'<div class="mkt-fields"><div class="field" style="margin:0;grid-column:1/-1"><label>Address / area</label><input id="mAddr" placeholder="1234 Oak St, Wilmington NC"/></div><div class="field" style="margin:0"><label>Beds</label><input id="mBeds" type="number" placeholder="4"/></div><div class="field" style="margin:0"><label>Baths</label><input id="mBaths" type="number" placeholder="3"/></div><div class="field" style="margin:0"><label>Sq ft</label><input id="mSqft" type="number" placeholder="2840"/></div><div class="field" style="margin:0"><label>Price ($)</label><input id="mPrice" type="number" placeholder="492000"/></div></div>'
+ +'<div class="mkt-fields" id="mktOH" style="display:none"><div class="field" style="margin:0"><label>Open house date</label><input id="mOHDate" placeholder="Sat, June 28"/></div><div class="field" style="margin:0"><label>Time</label><input id="mOHTime" placeholder="1-3 PM"/></div></div>'
+ +'<div class="field" style="margin:10px 0 0"><label>Highlights (optional)</label><textarea id="mHigh" rows="2" placeholder="Renovated kitchen, water views, half-acre lot…"></textarea></div>'
+ +'<button class="btn btn-amber" id="mGen" style="margin-top:14px;width:100%;justify-content:center">'+ICON_SPARK+' Generate</button>'
+ +'</div>'
+ +'<div class="card cp"><div class="sec-t">3 · Your asset</div><div id="mktStage" class="mkt-stage"><div class="mkt-empty"><div class="mkt-empty-ic">'+ICON_SPARK+'</div>Choose a type, add your details and photos, then hit Generate.</div></div></div>'
+ +'</div>';
+}
+function wireMktCreate(){
+ mktInjectCss();
+ var types=document.getElementById('mktTypes');
+ if(types)types.querySelectorAll('.mkt-type').forEach(function(b){b.onclick=function(){MKT_TYPE=b.dataset.at;types.querySelectorAll('.mkt-type').forEach(function(x){x.classList.remove('on');});b.classList.add('on');var oh=document.getElementById('mktOH');if(oh)oh.style.display=(MKT_TYPE==='social_open'?'grid':'none');var drop=document.getElementById('mktDrop');if(drop)drop.style.display=(MKT_DESIGN[MKT_TYPE]?'flex':'none');};});
+ var f=document.getElementById('mktFile');if(f)f.onchange=function(){mktAddFiles(f.files);f.value='';};
+ var drop=document.getElementById('mktDrop');
+ if(drop){['dragover','dragenter'].forEach(function(ev){drop.addEventListener(ev,function(e){e.preventDefault();drop.classList.add('drag');});});['dragleave','drop'].forEach(function(ev){drop.addEventListener(ev,function(e){e.preventDefault();drop.classList.remove('drag');});});drop.addEventListener('drop',function(e){if(e.dataTransfer&&e.dataTransfer.files)mktAddFiles(e.dataTransfer.files);});drop.style.display=(MKT_DESIGN[MKT_TYPE]?'flex':'none');}
+ var g=document.getElementById('mGen');if(g)g.onclick=mktGo;
+ mktRenderThumbs();
+}
+function mktAddFiles(files){Array.prototype.forEach.call(files||[],function(f){if(!/^image\//.test(f.type))return;if(MKT_PHOTOS.length>=6)return;MKT_PHOTOS.push({url:URL.createObjectURL(f),file:f});});mktRenderThumbs();}
+function mktRenderThumbs(){var el=document.getElementById('mktThumbs');if(!el)return;el.innerHTML=MKT_PHOTOS.map(function(p,i){return '<div class="mkt-thumb"><img src="'+p.url+'"/><button type="button" class="mkt-thx" data-rm="'+i+'">×</button>'+(i===0?'<span class="mkt-cover">COVER</span>':'')+'</div>';}).join('');el.querySelectorAll('[data-rm]').forEach(function(b){b.onclick=function(e){e.preventDefault();MKT_PHOTOS.splice(+b.dataset.rm,1);mktRenderThumbs();};});}
+function mktInputs2(){var addr=mval('mAddr');return {addr:addr,beds:mval('mBeds'),baths:mval('mBaths'),sqft:mval('mSqft'),price:mval('mPrice'),highlights:mval('mHigh'),ohDate:mval('mOHDate'),ohTime:mval('mOHTime'),area:(addr.split(',')[1]||'').trim()||(addr.split(',')[0]||'the area')};}
+function mktHeadline(type,inp){var a=(inp.addr||'this home').split(',')[0];if(type==='social_sold')return 'Sold in '+(inp.area||'town')+'!';if(type==='social_open')return 'Open House this weekend';return 'Welcome home';}
+function mktBullets(inp){var b=[];if(inp.beds)b.push(inp.beds+' spacious bedrooms');if(inp.baths)b.push(inp.baths+' full bathrooms');if(inp.sqft)b.push(Number(inp.sqft).toLocaleString()+' sq ft of living');b.push('Prime '+(inp.area||'local')+' location');b.push('Move-in ready');b.push('Private showings available');return b.slice(0,6);}
+async function mktGo(){
+ var type=MKT_TYPE;var meta=MKT_KINDMAP[type]||['Asset','-'];var inp=mktInputs2();
+ var stage=document.getElementById('mktStage');var gen=document.getElementById('mGen');
+ if(MKT_DESIGN[type]&&!MKT_PHOTOS.length){toast('Add at least one property photo for this design');var d=document.getElementById('mktDrop');if(d){d.classList.add('drag');setTimeout(function(){d.classList.remove('drag');},1100);}return;}
+ if(gen){gen.disabled=true;gen.style.opacity='.6';}
+ if(stage)stage.innerHTML='<div class="mkt-loading"><span class="nspin2"></span>'+(MKT_DESIGN[type]?'Designing your ':'Writing your ')+meta[0].toLowerCase()+'…</div>';
+ var ai=null;
+ try{var resp=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:type,inputs:inp})});if(resp.ok){var j=await resp.json();if(j&&j.ok)ai=j;}}catch(e){}
+ if(gen){gen.disabled=false;gen.style.opacity='';}
+ var base=genAsset(type,inp,Math.floor(Math.random()*9999));
+ var content={kind:base.kind,channel:base.channel,title:(ai&&ai.title)||base.title,headline:(ai&&ai.headline)||mktHeadline(type,inp),bullets:(ai&&ai.bullets&&ai.bullets.length)?ai.bullets:mktBullets(inp),caption:(ai&&ai.caption)||base.body,body:(ai&&ai.body)||base.body};
+ MKT_LAST={type:type,inp:inp,content:content,ai:!!ai};
+ if(MKT_DESIGN[type])mktMountDesign(type,inp,content);else mktRenderText(type,content,!!ai);
+}
+function mktRenderText(type,content,ai){
+ var meta=MKT_KINDMAP[type]||['Asset','-'];var canPub=!!MKT_CONN[meta[1]];
+ var stage=document.getElementById('mktStage');if(!stage)return;
+ stage.innerHTML='<div class="mkt-textbar"><span class="badge teal">'+content.kind+'</span>'+(meta[1]!=='-'?'<span class="mut" style="font-size:12px">to '+chName(meta[1])+'</span>':'')+(ai?'<span class="badge green" style="margin-left:auto">AI-generated</span>':'<span class="mut" style="margin-left:auto;font-size:11px">draft</span>')+'</div><div class="mkt-textbody">'+mktEsc(content.body||content.caption)+'</div><div class="mkt-actions" style="justify-content:flex-start"><button class="btn btn-pri btn-sm" id="mSave">Save</button><button class="btn btn-ghost btn-sm" id="mCopy">Copy</button>'+(meta[1]!=='-'?'<button class="btn btn-ghost btn-sm" id="mPub">'+(canPub?'Publish to '+chName(meta[1]):'Connect '+chName(meta[1]))+'</button>':'')+'<button class="btn btn-ghost btn-sm" id="mRe">↻ Regenerate</button></div>';
+ document.getElementById('mCopy').onclick=function(){copyText(content.body||content.caption||'');};
+ document.getElementById('mRe').onclick=mktGo;
+ document.getElementById('mSave').onclick=async function(){try{if(sb)await sb.from('campaigns').insert({kind:content.kind,title:content.title,channel:content.channel,body:(content.body||content.caption),status:'ready'});toast('Saved to campaigns');}catch(e){toast('Could not save');}};
+ var pb=document.getElementById('mPub');if(pb)pb.onclick=async function(){if(!MKT_CONN[meta[1]]){toast('Connect '+chName(meta[1])+' first');var t=document.querySelector('#mktTabs button[data-mt="channels"]');if(t)t.click();return;}try{if(sb)await sb.from('campaigns').insert({kind:content.kind,title:content.title,channel:meta[1],body:(content.body||content.caption),status:'scheduled'});}catch(e){}toast('Scheduled to '+chName(meta[1]));};
+}
+function mktMountDesign(type,inp,c){
+ var W=type==='flyer'?820:1080,H=type==='flyer'?1060:1080;
+ var html=type==='flyer'?mktDesignFlyer(inp,c):mktDesignSocial(type,inp,c);
+ var stage=document.getElementById('mktStage');if(!stage)return;
+ stage.innerHTML='<div class="mkt-canvas-wrap" id="mktCanvasWrap"><div class="mkt-scaler" id="mktScaler"><div id="mktDesign" style="position:relative;width:'+W+'px;height:'+H+'px;background:#fff;overflow:hidden">'+html+'</div></div></div><div class="mkt-actions"><button class="btn btn-amber btn-sm" id="mDl">⬇ Download PNG</button><button class="btn btn-ghost btn-sm" id="mCopy">Copy caption</button><button class="btn btn-pri btn-sm" id="mSave">Save</button><button class="btn btn-ghost btn-sm" id="mRe">↻ Regenerate</button></div><div class="mkt-cap"><div class="mkt-cap-h">Caption</div><div class="mkt-cap-b">'+mktEsc(c.caption||'')+'</div></div>';
+ mktFit(W,H);
+ document.getElementById('mDl').onclick=function(){mktExport(c,false);};
+ document.getElementById('mCopy').onclick=function(){copyText(c.caption||'');};
+ document.getElementById('mRe').onclick=mktGo;
+ document.getElementById('mSave').onclick=function(){mktExport(c,true);};
+}
+function mktFit(W,H){var stage=document.getElementById('mktStage');var wrap=document.getElementById('mktCanvasWrap');var scaler=document.getElementById('mktScaler');if(!stage||!wrap||!scaler)return;var avail=Math.min((stage.clientWidth||400)-2,460);var s=Math.min(1,avail/W);scaler.style.transform='scale('+s+')';scaler.style.transformOrigin='top left';wrap.style.width=(W*s)+'px';wrap.style.height=(H*s)+'px';}
+function mktImagesReady(node){var imgs=[].slice.call(node.querySelectorAll('img'));return Promise.all(imgs.map(function(im){return (im.complete&&im.naturalWidth)?Promise.resolve():new Promise(function(res){im.onload=res;im.onerror=res;setTimeout(res,2500);});}));}
+async function mktExport(content,save){
+ var node=document.getElementById('mktDesign');if(!node)return;
+ if(!window.html2canvas){toast('Renderer still loading — try again in a second');return;}
+ toast(save?'Saving…':'Rendering image…');
+ try{
+  await mktImagesReady(node);
+  var canvas=await html2canvas(node,{useCORS:true,scale:2,backgroundColor:'#ffffff',logging:false,width:node.offsetWidth,height:node.offsetHeight,windowWidth:node.offsetWidth,windowHeight:node.offsetHeight});
+  if(!save){var a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download=((content.title||'nestava-asset').replace(/[^a-z0-9]+/gi,'-').toLowerCase().replace(/^-+|-+$/g,''))+'.png';document.body.appendChild(a);a.click();a.remove();toast('Downloaded');return;}
+  var blob=await new Promise(function(r){canvas.toBlob(r,'image/png',0.92);});
+  var url=null;
+  if(sb&&blob){var path='designs/'+Date.now()+'-'+Math.random().toString(36).slice(2,7)+'.png';var up=await sb.storage.from('property-media').upload(path,blob,{contentType:'image/png',upsert:true});if(!up.error){url=sb.storage.from('property-media').getPublicUrl(path).data.publicUrl;}}
+  if(sb){await sb.from('campaigns').insert({kind:content.kind,title:content.title,channel:content.channel,body:content.caption,status:'ready',media_url:url,meta:{type:(MKT_LAST&&MKT_LAST.type)||null}});}
+  toast('Saved to campaigns');
+ }catch(e){toast(save?'Could not save':'Could not render image');}
+}
+function mktDesignFlyer(inp,c){
+ var ph=MKT_PHOTOS;
+ var hero=ph[0]?('<img src="'+ph[0].url+'" style="width:100%;height:100%;object-fit:cover;display:block"/>'):'<div style="width:100%;height:100%;background:#dfe5e2"></div>';
+ var sec=ph.slice(1,4).map(function(p){return '<div style="flex:1;height:120px;border-radius:8px;overflow:hidden"><img src="'+p.url+'" style="width:100%;height:100%;object-fit:cover;display:block"/></div>';}).join('');
+ var stat=function(n,l){return '<div style="flex:1;text-align:center"><div style="font-size:30px;font-weight:800;color:#11201C;line-height:1">'+(n||'—')+'</div><div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8a8a7e;margin-top:5px">'+l+'</div></div>';};
+ var bl=(c.bullets||[]).slice(0,6).map(function(b){return '<div style="display:flex;align-items:flex-start;gap:9px;width:50%;padding:6px 0;box-sizing:border-box"><span style="flex:none;width:8px;height:8px;border-radius:50%;background:#C2792E;margin-top:7px"></span><span style="font-size:15px;color:#2c352f;line-height:1.35">'+mktEsc(b)+'</span></div>';}).join('');
+ var price=inp.price?fmtMoney(inp.price):'';
+ return ''
+ +'<div style="position:absolute;inset:0;background:#fff;font-family:\'General Sans\',sans-serif;display:flex;flex-direction:column">'
+ +'<div style="height:74px;background:#0F4C46;display:flex;align-items:center;padding:0 30px;gap:11px">'+MARK_W+'<span style="color:#fff;font-weight:700;font-size:20px">'+mktEsc(mktBrokerage())+'</span><span style="margin-left:auto;background:#C2792E;color:#3a240a;font-weight:800;font-size:13px;letter-spacing:.1em;padding:8px 16px;border-radius:7px">JUST LISTED</span></div>'
+ +'<div style="height:452px;width:100%;overflow:hidden">'+hero+'</div>'
+ +'<div style="flex:1;padding:24px 34px 0 34px;display:flex;flex-direction:column;min-height:0">'
+ +'<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">'+(price?'<div style="font-size:38px;font-weight:800;color:#0F4C46;line-height:1">'+price+'</div>':'')+'<div style="font-size:17px;color:#5c5c52;font-weight:500">'+mktEsc(inp.addr||'')+'</div></div>'
+ +'<div style="display:flex;margin:16px 0 14px;padding:14px 0;border-top:1px solid #ece8dd;border-bottom:1px solid #ece8dd">'+stat(inp.beds,'Beds')+'<div style="width:1px;background:#ece8dd"></div>'+stat(inp.baths,'Baths')+'<div style="width:1px;background:#ece8dd"></div>'+stat(inp.sqft?Number(inp.sqft).toLocaleString():'','Sq Ft')+'</div>'
+ +'<div style="font-size:23px;font-weight:700;color:#11201C;line-height:1.2;margin-bottom:10px">'+mktEsc(c.headline||'')+'</div>'
+ +'<div style="display:flex;flex-wrap:wrap;margin-bottom:14px">'+bl+'</div>'
+ +(sec?('<div style="display:flex;gap:10px;margin-top:auto;margin-bottom:16px">'+sec+'</div>'):'')
+ +'</div>'
+ +'<div style="background:#11201C;color:#cdd8d3;padding:14px 34px;display:flex;align-items:center;font-size:13px"><span style="font-weight:600;color:#fff">'+mktEsc(mktBrokerage())+'</span><span style="margin:0 10px;opacity:.5">·</span><span>Contact us for a private showing</span><span style="margin-left:auto;font-size:11px;opacity:.7">Equal Housing Opportunity</span></div>'
+ +'</div>';
+}
+function mktDesignSocial(type,inp,c){
+ var tag=type==='social_open'?'OPEN HOUSE':(type==='social_sold'?'JUST SOLD':'JUST LISTED');
+ var hero=MKT_PHOTOS[0]?('<img src="'+MKT_PHOTOS[0].url+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"/>'):'<div style="position:absolute;inset:0;background:#0F4C46"></div>';
+ var showPrice=(type!=='social_sold')&&inp.price;
+ var stats=[];if(inp.beds)stats.push(inp.beds+' BD');if(inp.baths)stats.push(inp.baths+' BA');if(inp.sqft)stats.push(Number(inp.sqft).toLocaleString()+' SF');
+ var oh=(type==='social_open'&&(inp.ohDate||inp.ohTime))?('<div style="font-size:30px;font-weight:700;color:#F0B775;margin-bottom:8px">'+mktEsc([inp.ohDate,inp.ohTime].filter(Boolean).join('  ·  '))+'</div>'):'';
+ var sold=type==='social_sold'?'<div style="position:absolute;top:150px;right:70px;transform:rotate(8deg);border:5px solid #C2792E;color:#fff;background:rgba(194,121,46,.92);font-weight:800;font-size:50px;letter-spacing:.05em;padding:8px 30px;border-radius:12px">SOLD</div>':'';
+ return ''
+ +'<div style="position:absolute;inset:0;font-family:\'General Sans\',sans-serif;overflow:hidden;background:#0F4C46">'
+ +hero
+ +'<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,20,17,.5) 0%,rgba(8,20,17,0) 28%,rgba(8,20,17,0) 42%,rgba(8,20,17,.92) 100%)"></div>'
+ +'<div style="position:absolute;top:54px;left:54px;background:#C2792E;color:#3a240a;font-weight:800;font-size:22px;letter-spacing:.12em;padding:12px 24px;border-radius:10px">'+tag+'</div>'
+ +'<div style="position:absolute;top:60px;right:54px;display:flex;align-items:center;gap:10px;background:rgba(15,76,70,.8);padding:11px 20px;border-radius:999px">'+MARK_W+'<span style="color:#fff;font-weight:700;font-size:21px">'+mktEsc(mktBrokerage())+'</span></div>'
+ +sold
+ +'<div style="position:absolute;left:54px;right:54px;bottom:54px">'+oh
+ +'<div style="font-size:54px;font-weight:800;color:#fff;line-height:1.08;margin-bottom:16px;text-shadow:0 2px 14px rgba(0,0,0,.45)">'+mktEsc(c.headline||'')+'</div>'
+ +'<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">'+(showPrice?'<span style="font-size:40px;font-weight:800;color:#F0B775">'+fmtMoney(inp.price)+'</span>':'')+(stats.length?'<span style="font-size:26px;font-weight:600;color:#eaf2ef">'+stats.join('  ·  ')+'</span>':'')+'</div>'
+ +(inp.addr?('<div style="margin-top:14px;font-size:22px;color:#cdd8d3;font-weight:500">'+mktEsc(inp.addr)+'</div>'):'')
+ +'</div></div>';
+}
+function mktInjectCss(){if(document.getElementById('mktStudioCss'))return;var s=document.createElement('style');s.id='mktStudioCss';s.textContent='.mkt-types{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}@media(max-width:1100px){.mkt-types{grid-template-columns:repeat(2,1fr)}}.mkt-type{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;transition:.12s;font-family:var(--f)}.mkt-type:hover{border-color:#0F4C46;transform:translateY(-1px)}.mkt-type.on{border-color:#0F4C46;background:#E7F1EF;box-shadow:0 0 0 3px rgba(15,76,70,.13)}.mkt-type .mkt-ic{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:#0F4C46;color:#fff;margin-bottom:7px}.mkt-type .mkt-ic svg{width:16px;height:16px}.mkt-tl{font-weight:700;font-size:13.5px;color:#11201C}.mkt-ts{font-size:11px;color:#8a8a7e}.mkt-grid{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:14px;align-items:start}@media(max-width:880px){.mkt-grid{grid-template-columns:1fr}}.mkt-drop{display:flex;align-items:center;gap:12px;border:1.5px dashed #c8cfc9;border-radius:12px;padding:15px;cursor:pointer;background:#fbfaf6;transition:.12s}.mkt-drop:hover,.mkt-drop.drag{border-color:#0F4C46;background:#eef4f2}.mkt-drop input{display:none}.mkt-drop-ic{flex:none;width:38px;height:38px;border-radius:9px;background:#E7F1EF;color:#0F4C46;display:flex;align-items:center;justify-content:center}.mkt-drop-ic svg{width:20px;height:20px}.mkt-drop-t{display:flex;flex-direction:column;font-size:13.5px;color:#11201C}.mkt-drop-t span{font-size:11.5px;color:#8a8a7e}.mkt-thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.mkt-thumb{position:relative;width:60px;height:60px;border-radius:9px;overflow:hidden;border:1px solid var(--line)}.mkt-thumb img{width:100%;height:100%;object-fit:cover;display:block}.mkt-thx{position:absolute;top:2px;right:2px;width:18px;height:18px;border:none;border-radius:50%;background:rgba(17,32,28,.82);color:#fff;font-size:13px;line-height:1;cursor:pointer;padding:0}.mkt-cover{position:absolute;bottom:0;left:0;right:0;background:rgba(15,76,70,.86);color:#fff;font-size:8px;font-weight:700;text-align:center;padding:2px 0;letter-spacing:.06em}.mkt-fields{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}#mktOH{grid-template-columns:1fr 1fr;margin-top:10px}.mkt-stage{min-height:320px}.mkt-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:320px;color:var(--muted);font-size:13.5px;text-align:center;padding:20px}.mkt-empty-ic{width:46px;height:46px;border-radius:12px;background:#E7F1EF;color:#0F4C46;display:flex;align-items:center;justify-content:center}.mkt-empty-ic svg{width:22px;height:22px}.mkt-loading{display:flex;align-items:center;gap:11px;justify-content:center;min-height:320px;color:var(--muted);font-size:14px}.nspin2{width:18px;height:18px;border:2px solid var(--line);border-top-color:#0F4C46;border-radius:50%;display:inline-block;animation:nspin2 .8s linear infinite}@keyframes nspin2{to{transform:rotate(360deg)}}.mkt-canvas-wrap{position:relative;margin:0 auto;overflow:hidden;border-radius:10px;box-shadow:0 12px 34px rgba(15,76,70,.18)}.mkt-scaler{position:absolute;top:0;left:0}.mkt-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:16px}.mkt-cap{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}.mkt-cap-h{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px}.mkt-cap-b{white-space:pre-wrap;font-size:13px;line-height:1.6;color:#2c352f}.mkt-textbar{display:flex;align-items:center;gap:8px;padding:4px 0 12px}.mkt-textbody{white-space:pre-wrap;font-size:13.5px;line-height:1.65;border:1px solid var(--line);border-radius:10px;padding:14px;background:#fff}';document.head.appendChild(s);window.addEventListener('resize',function(){if(MKT_LAST&&MKT_DESIGN[MKT_LAST.type]&&document.getElementById('mktDesign')){var W=MKT_LAST.type==='flyer'?820:1080,H=MKT_LAST.type==='flyer'?1060:1080;mktFit(W,H);}});}
 
 /* ===== Home page v3 (professional, no beta/jargon) ===== */
 function buildLanding3(){
