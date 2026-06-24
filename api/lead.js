@@ -66,6 +66,10 @@ export default async function handler(req, res) {
         var j = await r.json(); if (j && j.ok && j.message) msg = j.message;
       } catch (e) {}
       if (!msg) msg = 'Hi' + (name ? (' ' + name.split(' ')[0]) : '') + ', thanks for reaching out! Quick question so I can point you in the right direction — what are you looking for, and what’s your timeline?';
+      // Resolve the {{agent}} merge field from the org's Brand Kit (the client
+      // does this for in-app drafts; do it here for server-side web leads).
+      try { var bk = await rest('brand_kits?org_id=eq.' + org + '&select=agent_name&limit=1'); var agentName = (bk && bk[0] && bk[0].agent_name) || ''; msg = msg.replace(/\{\{\s*agent\s*\}\}/g, agentName); } catch (e) { msg = msg.replace(/\{\{\s*agent\s*\}\}/g, ''); }
+      msg = msg.replace(/[ \t]+\n/g, '\n').trim();
       try { await rest('activities', { method: 'POST', prefer: 'return=minimal', body: { org_id: org, contact_id: contact.id, kind: 'auto_draft', body: msg, summary: '⚡ AI first-touch drafted (speed-to-lead)' } }); } catch (e) {}
     }
     res.status(200).json({ ok: true });
