@@ -39,6 +39,15 @@ function fmtPrice(v) { var n = Number(v); return (v && !isNaN(n)) ? '$' + n.toLo
 
 function buildPrompt(type, inputs) {
   var i = inputs || {};
+  if (type === 'neighborhoods') {
+    var areas = i.areas || '';
+    return 'Write short, local-expert neighborhood overviews for a real estate website' +
+      (i.brokerage ? (' for ' + i.brokerage) : '') + '.' +
+      ' Cover these areas: ' + areas + '.' +
+      ' For each one, write 2 to 3 sentences a homebuyer would find genuinely useful — lifestyle, what the area is known for, the kind of homes and the local market feel.' +
+      ' Be specific and warm, never generic. Do NOT fabricate exact statistics, school names, prices, or rankings, and strictly follow Fair Housing (describe the place and lifestyle, never demographics or who should live there).' +
+      ' Return ONLY a JSON object: {"items":[{"name":"Area name","blurb":"the 2-3 sentence overview"}]}. No markdown, no commentary.';
+  }
   if (type === 'agent_bio') {
     var who = i.agent || 'the agent';
     return 'Write a warm, credible, first-person professional bio for a real estate agent named ' + who +
@@ -136,14 +145,18 @@ export default async function handler(req, res) {
     var raw = provider.kind === 'anthropic' ? await callAnthropic(provider, prompt) : await callOpenAICompat(provider, prompt);
     var parsed = parseResult(raw) || {};
     var bullets = Array.isArray(parsed.bullets) ? parsed.bullets.map(function (b) { return String(b).replace(/^[-•\s]+/, '').trim(); }).filter(Boolean).slice(0, 6) : [];
+    var items = Array.isArray(parsed.items) ? parsed.items.map(function (it) {
+      return { name: String((it && it.name) || '').trim(), blurb: String((it && it.blurb) || '').trim() };
+    }).filter(function (it) { return it.name && it.blurb; }).slice(0, 16) : [];
     var out = {
       title:    parsed.title    ? String(parsed.title).trim()    : '',
       headline: parsed.headline ? String(parsed.headline).trim() : '',
       bullets:  bullets,
       caption:  parsed.caption  ? String(parsed.caption).trim()  : '',
-      body:     parsed.body     ? String(parsed.body).trim()     : ''
+      body:     parsed.body     ? String(parsed.body).trim()     : '',
+      items:    items
     };
-    if (!out.body && !out.caption && !out.headline && !out.bullets.length) {
+    if (!out.body && !out.caption && !out.headline && !out.bullets.length && !out.items.length) {
       res.status(200).json({ ok: false, error: 'empty_result' });
       return;
     }
