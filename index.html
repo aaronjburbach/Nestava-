@@ -872,7 +872,7 @@ async function hydrate(){
   if(ct.data){CONTACTS.length=0;ct.data.forEach(function(c){CONTACTS.push(mapContact(c,ac.data||[]));});crmSel=CONTACTS[0]?CONTACTS[0].id:null;}
   if(rp.data){RECENT.length=0;rp.data.forEach(function(x){RECENT.push([x.property_address,x.type+' · '+timeAgo(x.created_at),Number(x.risk_score)]);});}
   if(ld.data){LEADS.length=0;ld.data.forEach(function(l){LEADS.push([l.address,l.owner,l.type,l.score,l.id,l.skip_traced]);});}
-  renderDashboard();renderProspect();renderCrmList(document.getElementById('crmFilter')?document.getElementById('crmFilter').value:'');if(crmSel){renderCrmDetail(crmSel);}else{var _cd=document.getElementById('crmDetail');if(_cd)_cd.innerHTML='<div class="card cp" style="color:var(--muted);font-size:13.5px">No contacts yet. Click <b>Add contact</b> above, or add a lead from Prospect.</div>';}
+  renderDashboard();renderProspect();try{if(typeof loadCrm==='function')loadCrm();}catch(e){}
  }catch(e){console.warn('hydrate',e);}
 }
 
@@ -961,7 +961,7 @@ renderProspect=function(f){if(!f){var a=document.querySelector('#prospectFilter 
  body.querySelectorAll('[data-st]').forEach(function(b){if(b.disabled)return;b.onclick=async function(e){e.stopPropagation();var id=b.dataset.st;try{if(sb&&id)await sb.from('prospect_leads').update({skip_traced:true}).eq('id',id);}catch(err){}var L=LEADS.find(function(x){return String(x[4])===String(id);});if(L)L[5]=true;toast('Skip-trace complete — DNC-scrubbed');renderProspect(f);renderProspectStats();};});
  body.querySelectorAll('[data-crm]').forEach(function(b){b.onclick=function(e){e.stopPropagation();var p=b.dataset.crm.split('|');addLeadToCrm(decodeURIComponent(p[0]),decodeURIComponent(p[1]));};});
  body.querySelectorAll('tr[data-addr]').forEach(function(tr){tr.onclick=function(){var a=decodeURIComponent(tr.dataset.addr);var L=LEADS.find(function(x){return x[0]===a;});if(L)showLeadDetail(L);};});};
-async function addLeadToCrm(addr,owner){try{if(!sb){toast('Sign in to save');return;}var r=await sb.from('contacts').insert({name:owner||'Owner',source:'Prospect',status:'New Lead',property_address:addr}).select().single();if(r.error){toast('Could not add to CRM');return;}try{if(typeof CONTACTS!=='undefined'&&typeof mapContact==='function'){CONTACTS.push(mapContact(r.data,[]));crmSel=r.data.id;if(typeof renderCrmList==='function')renderCrmList(document.getElementById('crmFilter')?document.getElementById('crmFilter').value:'');if(typeof renderCrmDetail==='function')renderCrmDetail(r.data.id);}}catch(e3){}toast((owner||'Lead')+' added to CRM');renderProspectStats();}catch(e){toast('Error adding to CRM');}}
+async function addLeadToCrm(addr,owner){try{if(!sb){toast('Sign in to save');return;}var r=await sb.from('contacts').insert({name:owner||'Owner',source:'Prospect',status:'New Lead',property_address:addr}).select().single();if(r.error){toast('Could not add to CRM');return;}try{if(typeof CONTACTS!=='undefined'&&typeof mapContact==='function'){CONTACTS.push(mapContact(r.data,[]));crmSel=r.data.id;if(typeof renderCrmList==='function')renderCrmList(document.getElementById('crmFilter')?document.getElementById('crmFilter').value:'');if(typeof renderCrmDetail==='function')renderCrmDetail(r.data.id);}}catch(e3){}try{if(typeof loadCrm==='function')loadCrm();}catch(e4){}toast((owner||'Lead')+' added to CRM');renderProspectStats();}catch(e){toast('Error adding to CRM');}}
 function showLeadDetail(l){var h=leadHash(l[0]);var m=document.getElementById('leadModal');if(!m){m=document.createElement('div');m.id='leadModal';m.style.cssText='position:fixed;inset:0;z-index:1100;display:none;align-items:center;justify-content:center;background:rgba(20,30,25,.45);padding:20px';m.innerHTML='<div id="leadCard" style="width:100%;max-width:440px;background:#fff;border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.25);padding:24px;font-family:var(--f)"></div>';document.body.appendChild(m);m.onclick=function(e){if(e.target===m)m.style.display='none';};}
  var c=document.getElementById('leadCard');var sc=l[3],col=sc>=85?'red':sc>=75?'amber':'green';
  c.innerHTML='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700">'+l[2]+'</div><div style="font-size:18px;font-weight:600;margin-top:3px">'+l[0]+'</div><div style="font-size:13px;color:var(--muted)">'+l[1]+'</div></div><div class="badge '+col+'" style="font-size:14px;padding:6px 12px">'+sc+'</div></div>'
@@ -1071,6 +1071,157 @@ function openConnect(ch){var m=document.getElementById('connectModal');if(!m){m=
  m.style.display='flex';
  document.getElementById('cnClose').onclick=function(){m.style.display='none';};
  document.getElementById('cnMark').onclick=async function(){try{if(sb)await sb.from('integrations').insert({channel:ch,status:'connected'});}catch(e){}MKT_CONN[ch]=true;m.style.display='none';toast(chName(ch)+' connected');renderChannels();};}
+
+/* ===== CRM v2 (Phase 1: pipeline + rich contact record + smart lists + Morning Huddle) ===== */
+var _crmBuilt=false;
+var CRM2={contacts:[],tasks:[],view:'today',pipe:'buyer',sel:null,filter:'',smart:'all'};
+var CRM_STAGES={buyer:['New','Contacted','Engaged','Showing','Under Contract','Closed'],seller:['New','Contacted','Appointment','Listed','Under Contract','Closed']};
+function crmGet(id){for(var i=0;i<CRM2.contacts.length;i++)if(String(CRM2.contacts[i].id)===String(id))return CRM2.contacts[i];return null;}
+function crmInit(n){return (n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(function(w){return w[0];}).join('').toUpperCase()||'?';}
+function crmDays(d){if(!d)return 999;return (Date.now()-new Date(d).getTime())/86400000;}
+function crmScore(c){var s=18;var n=(c.acts||[]).length;s+=Math.min(40,n*8);var d=crmDays(c.last_touch_at||c.created_at);if(d<2)s+=26;else if(d<7)s+=14;else if(d>21)s-=14;if(c.property_address)s+=10;if(['Showing','Under Contract','Listed','Appointment'].indexOf(c.stage)>=0)s+=18;if(c.stage==='Closed')s=Math.min(s,38);return Math.max(3,Math.min(99,Math.round(s)));}
+function crmScoreTag(s){return s>=70?'green':s>=45?'amber':'gray';}
+function rebuildCrm(){var v=document.getElementById('view-crm');if(!v)return;crmCss();if(!_crmBuilt){_crmBuilt=true;}
+ v.innerHTML='<div class="ph"><h1>CRM</h1><p>Your whole pipeline, every conversation, and an AI that tells you who to call — in one place.</p></div>'
+ +'<div class="crm-sub" id="crmSub"><button data-cv="today" class="active">Today</button><button data-cv="pipeline">Pipeline</button><button data-cv="contacts">Contacts</button><button class="btn btn-amber btn-sm" id="crmAdd" style="margin-left:auto">+ Add contact</button></div>'
+ +'<div id="crmBody"></div>';
+ v.querySelectorAll('#crmSub button[data-cv]').forEach(function(b){b.onclick=function(){CRM2.view=b.dataset.cv;v.querySelectorAll('#crmSub button[data-cv]').forEach(function(x){x.classList.remove('active');});b.classList.add('active');renderCrm();};});
+ var add=document.getElementById('crmAdd');if(add)add.onclick=crmAddModal;
+ loadCrm();
+}
+async function loadCrm(){if(!sb)return;try{
+ var res=await Promise.all([
+  sb.from('contacts').select('*').is('deleted_at',null).order('created_at',{ascending:false}),
+  sb.from('activities').select('*').order('created_at',{ascending:false}),
+  sb.from('tasks').select('*').eq('done',false).order('due_at',{ascending:true})
+ ]);
+ var cs=res[0].data||[],acts=res[1].data||[],tks=res[2].data||[];
+ var byc={};acts.forEach(function(a){if(a.contact_id){(byc[a.contact_id]=byc[a.contact_id]||[]).push(a);}});
+ cs.forEach(function(c){c.acts=byc[c.id]||[];if(!c.last_touch_at)c.last_touch_at=(c.acts[0]&&c.acts[0].created_at)||c.created_at;if(!c.stage)c.stage='New';if(!c.ctype)c.ctype='buyer';c._score=crmScore(c);});
+ CRM2.contacts=cs;CRM2.tasks=tks;renderCrm();
+}catch(e){}}
+function renderCrm(){var el=document.getElementById('crmBody');if(!el)return;if(CRM2.view==='pipeline')renderCrmPipeline(el);else if(CRM2.view==='contacts')renderCrmContacts(el);else renderCrmToday(el);}
+
+/* ---- Today / Morning Huddle ---- */
+function renderCrmToday(el){
+ var cs=CRM2.contacts;
+ var hot=cs.filter(function(c){return c._score>=70&&c.stage!=='Closed';}).sort(function(a,b){return b._score-a._score;}).slice(0,5);
+ var cold=cs.filter(function(c){return c.stage!=='Closed'&&crmDays(c.last_touch_at)>=14;}).sort(function(a,b){return crmDays(b.last_touch_at)-crmDays(a.last_touch_at);}).slice(0,5);
+ var fresh=cs.filter(function(c){return c.stage==='New'&&(c.acts||[]).length===0;}).slice(0,5);
+ var tks=(CRM2.tasks||[]).filter(function(t){return !t.due_at||crmDays(t.due_at)>=-1;}).slice(0,6);
+ function row(c,reason){return '<div class="crm-hrow"><div class="crm-ava">'+crmInit(c.name)+'</div><div style="flex:1;min-width:0"><div class="crm-hn">'+mktEsc(c.name||'Lead')+' <span class="badge '+crmScoreTag(c._score)+'" style="margin-left:4px">'+c._score+'</span></div><div class="crm-hs">'+reason+'</div></div><button class="btn btn-ghost btn-sm" data-open="'+c.id+'">Open</button><button class="btn btn-pri btn-sm" data-msg="'+c.id+'">Draft</button></div>';}
+ var greet='Here’s who needs you today';
+ var html='<div class="crm-huddle-head"><div><div class="crm-h1">Morning Huddle</div><div class="mut" style="font-size:13px">'+greet+' · '+cs.length+' contacts in your book</div></div></div>';
+ var blocks=[];
+ if(tks.length)blocks.push(['Tasks due',tks.map(function(t){var c=t.contact_id?crmGet(t.contact_id):null;return '<div class="crm-hrow"><div class="crm-ava" style="background:#C2792E">✓</div><div style="flex:1;min-width:0"><div class="crm-hn">'+mktEsc(t.title||'Task')+'</div><div class="crm-hs">'+(c?mktEsc(c.name):'General')+(t.due_at?(' · due '+timeAgo(t.due_at)):'')+'</div></div><button class="btn btn-ghost btn-sm" data-done="'+t.id+'">Done</button>'+(c?'<button class="btn btn-pri btn-sm" data-msg="'+c.id+'">Draft</button>':'')+'</div>';}).join('')]);
+ if(fresh.length)blocks.push(['New leads — reach out fast',fresh.map(function(c){return row(c,'New '+(c.ctype||'lead')+(c.source?(' · '+c.source):'')+' · never contacted');}).join('')]);
+ if(hot.length)blocks.push(['Hot — keep the momentum',hot.map(function(c){return row(c,(c.stage||'')+(c.property_address?(' · '+c.property_address):'')+' · high engagement');}).join('')]);
+ if(cold.length)blocks.push(['Going cold — win them back',cold.map(function(c){return row(c,'No touch in '+Math.round(crmDays(c.last_touch_at))+' days · '+(c.stage||''));}).join('')]);
+ if(!blocks.length)html+='<div class="card cp" style="color:var(--muted);font-size:13.5px">No contacts yet. Click <b>+ Add contact</b> to start your book, or import leads from Prospect / MLS.</div>';
+ blocks.forEach(function(b){html+='<div class="crm-block"><div class="crm-block-t">'+b[0]+'</div>'+b[1]+'</div>';});
+ el.innerHTML=html;
+ el.querySelectorAll('[data-open]').forEach(function(b){b.onclick=function(){openContact(b.dataset.open);};});
+ el.querySelectorAll('[data-msg]').forEach(function(b){b.onclick=function(){openContact(b.dataset.msg);setTimeout(function(){crmDraft(b.dataset.msg,'text');},250);};});
+ el.querySelectorAll('[data-done]').forEach(function(b){b.onclick=async function(){try{await sb.from('tasks').update({done:true}).eq('id',b.dataset.done);}catch(e){}toast('Task done');loadCrm();};});
+}
+
+/* ---- Pipeline (Kanban) ---- */
+function renderCrmPipeline(el){
+ var stages=CRM_STAGES[CRM2.pipe]||CRM_STAGES.buyer;
+ var cs=CRM2.contacts.filter(function(c){return (c.ctype||'buyer')===CRM2.pipe;});
+ var html='<div class="crm-pipebar"><button class="crm-pill'+(CRM2.pipe==='buyer'?' on':'')+'" data-pipe="buyer">Buyers</button><button class="crm-pill'+(CRM2.pipe==='seller'?' on':'')+'" data-pipe="seller">Sellers</button><span class="mut" style="margin-left:auto;font-size:12px">Drag a card to move stages</span></div>';
+ html+='<div class="crm-kanban">'+stages.map(function(st){var col=cs.filter(function(c){return (c.stage||'New')===st;});return '<div class="crm-col" data-stage="'+st+'"><div class="crm-col-h">'+st+'<span class="crm-col-n">'+col.length+'</span></div><div class="crm-col-b">'+col.map(function(c){return '<div class="crm-kcard" draggable="true" data-id="'+c.id+'"><div class="crm-kn">'+mktEsc(c.name||'Lead')+'</div>'+(c.property_address?'<div class="crm-kp">'+mktEsc(c.property_address)+'</div>':'')+'<div class="crm-kf"><span class="badge '+crmScoreTag(c._score)+'">'+c._score+'</span><span class="mut" style="font-size:11px">'+timeAgo(c.last_touch_at)+'</span></div></div>';}).join('')+'</div></div>';}).join('')+'</div>';
+ el.innerHTML=html;
+ el.querySelectorAll('[data-pipe]').forEach(function(b){b.onclick=function(){CRM2.pipe=b.dataset.pipe;renderCrm();};});
+ el.querySelectorAll('.crm-kcard').forEach(function(card){card.onclick=function(){openContact(card.dataset.id);};card.ondragstart=function(e){e.dataTransfer.setData('text/plain',card.dataset.id);card.style.opacity='.5';};card.ondragend=function(){card.style.opacity='';};});
+ el.querySelectorAll('.crm-col').forEach(function(col){col.ondragover=function(e){e.preventDefault();col.classList.add('drag');};col.ondragleave=function(){col.classList.remove('drag');};col.ondrop=function(e){e.preventDefault();col.classList.remove('drag');var id=e.dataTransfer.getData('text/plain');crmMoveStage(id,col.dataset.stage);};});
+}
+async function crmMoveStage(id,stage){var c=crmGet(id);if(!c||c.stage===stage)return;c.stage=stage;try{await sb.from('contacts').update({stage:stage,last_touch_at:c.last_touch_at}).eq('id',id);}catch(e){}toast(c.name+' → '+stage);renderCrm();}
+
+/* ---- Contacts list + Smart Lists ---- */
+var CRM_SMART=[['all','All'],['new','New'],['hot','Hot'],['cold','Going cold'],['buyer','Buyers'],['seller','Sellers'],['past','Past clients']];
+function crmSmartMatch(c){var s=CRM2.smart;if(s==='all')return true;if(s==='new')return c.stage==='New';if(s==='hot')return c._score>=70&&c.stage!=='Closed';if(s==='cold')return c.stage!=='Closed'&&crmDays(c.last_touch_at)>=14;if(s==='buyer')return (c.ctype||'buyer')==='buyer';if(s==='seller')return c.ctype==='seller';if(s==='past')return c.ctype==='past'||c.stage==='Closed';return true;}
+function renderCrmContacts(el){
+ var f=(CRM2.filter||'').toLowerCase();
+ var cs=CRM2.contacts.filter(crmSmartMatch).filter(function(c){return !f||(c.name||'').toLowerCase().indexOf(f)>=0||(c.property_address||'').toLowerCase().indexOf(f)>=0||(c.source||'').toLowerCase().indexOf(f)>=0;});
+ var html='<div class="crm-smart">'+CRM_SMART.map(function(s){return '<button class="crm-pill'+(CRM2.smart===s[0]?' on':'')+'" data-smart="'+s[0]+'">'+s[1]+'</button>';}).join('')+'<input id="crmSearch" placeholder="Search contacts" value="'+mktEsc(CRM2.filter).replace(/"/g,'&quot;')+'" style="margin-left:auto;max-width:220px"/></div>';
+ html+='<div class="card cp" style="padding:0;overflow:hidden">';
+ if(!cs.length)html+='<div style="padding:18px;color:var(--muted);font-size:13.5px">No contacts in this list.</div>';
+ else html+='<div class="crm-thead"><div>Name</div><div>Type</div><div>Stage</div><div>Score</div><div>Last touch</div></div>'+cs.map(function(c){return '<div class="crm-trow" data-id="'+c.id+'"><div class="crm-tn"><span class="crm-ava sm">'+crmInit(c.name)+'</span><div style="min-width:0"><div class="t">'+mktEsc(c.name||'Lead')+'</div><div class="s">'+mktEsc(c.property_address||c.source||'')+'</div></div></div><div class="crm-cap">'+mktEsc(c.ctype||'buyer')+'</div><div><span class="badge gray">'+mktEsc(c.stage||'New')+'</span></div><div><span class="badge '+crmScoreTag(c._score)+'">'+c._score+'</span></div><div class="mut" style="font-size:12px">'+timeAgo(c.last_touch_at)+'</div></div>';}).join('');
+ html+='</div>';
+ el.innerHTML=html;
+ el.querySelectorAll('[data-smart]').forEach(function(b){b.onclick=function(){CRM2.smart=b.dataset.smart;renderCrm();};});
+ var sr=document.getElementById('crmSearch');if(sr)sr.oninput=function(){CRM2.filter=sr.value;var el2=document.getElementById('crmBody');var cs2=CRM2.contacts.filter(crmSmartMatch).filter(function(c){var f2=sr.value.toLowerCase();return !f2||(c.name||'').toLowerCase().indexOf(f2)>=0||(c.property_address||'').toLowerCase().indexOf(f2)>=0;});/* light re-render of rows only */renderCrmContacts(el2);var s2=document.getElementById('crmSearch');if(s2){s2.focus();s2.setSelectionRange(s2.value.length,s2.value.length);}};
+ el.querySelectorAll('.crm-trow').forEach(function(r){r.onclick=function(){openContact(r.dataset.id);};});
+}
+
+/* ---- Add contact (low friction) ---- */
+function crmAddModal(){var m=mktModal('crmAddModal',460);m.style.display='flex';var c=m.firstChild;
+ c.innerHTML='<div style="padding:22px"><div style="font-size:17px;font-weight:700;margin-bottom:2px">Add a contact</div><div class="mut" style="font-size:12.5px;margin-bottom:14px">Just a name to start — add the rest anytime. Nestava fills in the blanks.</div>'
+ +'<div class="field"><label>Name</label><input id="caName" placeholder="Jordan Avery"/></div>'
+ +'<div class="field"><label>Phone or email <span class="mut">(optional)</span></label><input id="caContact" placeholder="(555) 123-4567 or name@email.com"/></div>'
+ +'<div style="display:flex;gap:10px"><div class="field" style="flex:1"><label>They’re a</label><select id="caType"><option value="buyer">Buyer</option><option value="seller">Seller</option><option value="past">Past client</option></select></div><div class="field" style="flex:1"><label>Source <span class="mut">(optional)</span></label><input id="caSrc" placeholder="Referral, Zillow…"/></div></div>'
+ +'<div class="field"><label>Property of interest <span class="mut">(optional)</span></label><input id="caProp" placeholder="124 Cotton Field Dr, Statesville NC"/></div>'
+ +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px"><button class="btn btn-ghost btn-sm" id="caCancel">Cancel</button><button class="btn btn-pri btn-sm" id="caSave">Add contact</button></div></div>';
+ c.querySelector('#caCancel').onclick=function(){m.style.display='none';};
+ c.querySelector('#caSave').onclick=async function(){var nm=(document.getElementById('caName').value||'').trim();if(!nm){toast('Add a name');return;}var ctc=(document.getElementById('caContact').value||'').trim();var rec={name:nm,ctype:document.getElementById('caType').value,source:(document.getElementById('caSrc').value||'').trim()||'Manual',stage:'New',property_address:(document.getElementById('caProp').value||'').trim()||null,last_touch_at:new Date().toISOString()};if(/@/.test(ctc))rec.email=ctc;else if(ctc)rec.phone=ctc;
+  try{var r=await sb.from('contacts').insert(rec).select().single();if(r.error)throw r.error;m.style.display='none';toast('Contact added');await loadCrm();openContact(r.data.id);}catch(e){toast('Could not add contact');}};
+}
+
+/* ---- Contact record (drawer) ---- */
+function crmNextBest(c){var d=crmDays(c.last_touch_at);if((c.acts||[]).length===0)return 'New lead — send a first touch now (speed-to-lead wins).';if(c.stage==='New')return 'Make first real contact and qualify timeline & budget.';if(d>=14)return 'Going cold — re-engage with something useful (a new listing or market note).';if(c.stage==='Showing')return 'Follow up on the showing and ask for their read.';if(c.stage==='Under Contract')return 'Keep them warm through closing; line up the next step.';return 'Keep momentum — send a quick, personal check-in.';}
+function openContact(id){var c=crmGet(id);if(!c)return;CRM2.sel=id;var m=mktModal('crmModal',780);m.style.display='flex';var card=m.firstChild;var stages=CRM_STAGES[c.ctype==='seller'?'seller':'buyer'];var pm=c.property_meta||{};
+ card.innerHTML='<div class="crm-d">'
+ +'<div class="crm-dhead"><div class="crm-ava lg">'+crmInit(c.name)+'</div><div style="flex:1;min-width:0"><div class="crm-dname">'+mktEsc(c.name||'Lead')+'</div><div class="crm-dmeta">'+[c.phone,c.email,c.source].filter(Boolean).map(mktEsc).join(' · ')+'</div></div><span class="badge '+crmScoreTag(c._score)+'" title="Lead score">Score '+c._score+'</span><button class="btn btn-ghost btn-sm" id="cdClose">Close</button></div>'
+ +'<div class="crm-dctrls"><label>Type <select id="cdType"><option value="buyer"'+(c.ctype!=='seller'&&c.ctype!=='past'?' selected':'')+'>Buyer</option><option value="seller"'+(c.ctype==='seller'?' selected':'')+'>Seller</option><option value="past"'+(c.ctype==='past'?' selected':'')+'>Past client</option></select></label>'
+ +'<label>Stage <select id="cdStage">'+stages.map(function(s){return '<option'+(c.stage===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select></label>'
+ +'<label style="flex:1">Property <input id="cdProp" value="'+mktEsc(c.property_address||'').replace(/"/g,'&quot;')+'" placeholder="Address of interest"/></label></div>'
+ +'<div class="crm-nba"><b>Next best action</b> · '+mktEsc(crmNextBest(c))+'</div>'
+ +'<div class="crm-dgrid">'
+ +'<div><div class="crm-sect">Compose</div><div class="crm-compose"><div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn btn-pri btn-sm" id="cdDraftText">✨ Draft text</button><button class="btn btn-ghost btn-sm" id="cdDraftEmail">✨ Draft email</button></div><div id="crmDraftOut" class="mut" style="font-size:12.5px">Let AI draft a personalized follow-up from this contact’s history.</div></div>'
+ +'<div class="crm-sect" style="margin-top:16px">Log a note</div><textarea id="crmNoteBox" rows="2" placeholder="Talked to them about… (AI will summarize &amp; set a task)"></textarea><div style="display:flex;gap:8px;margin-top:6px"><button class="btn btn-ghost btn-sm" id="cdNote">Save note</button><button class="btn btn-ghost btn-sm" id="cdCall">Log call</button><button class="btn btn-ghost btn-sm" id="cdText">Log text</button></div></div>'
+ +'<div><div class="crm-sect">Do more with '+mktEsc((c.name||'').split(' ')[0]||'this contact')+'</div><div class="crm-actions"><button class="btn btn-amber btn-sm" id="cdMkt">Generate marketing kit</button><button class="btn btn-ghost btn-sm" id="cdDD">Run Buyer Defense Report</button><button class="btn btn-ghost btn-sm" id="cdTx">Start a transaction</button></div>'
+ +(pm.photo?'<img src="'+pm.photo+'" style="width:100%;border-radius:10px;margin-top:12px"/>':'')
+ +'<div class="crm-sect" style="margin-top:16px">Timeline</div><div class="crm-timeline" id="crmTl">'+crmTimeline(c)+'</div></div>'
+ +'</div></div>';
+ card.querySelector('#cdClose').onclick=function(){m.style.display='none';};
+ card.querySelector('#cdType').onchange=function(e){crmField(id,'ctype',e.target.value);};
+ card.querySelector('#cdStage').onchange=function(e){crmField(id,'stage',e.target.value);};
+ var pr=card.querySelector('#cdProp');pr.onchange=function(){crmField(id,'property_address',pr.value.trim());};
+ card.querySelector('#cdDraftText').onclick=function(){crmDraft(id,'text');};
+ card.querySelector('#cdDraftEmail').onclick=function(){crmDraft(id,'email');};
+ card.querySelector('#cdNote').onclick=function(){crmAddNote(id);};
+ card.querySelector('#cdCall').onclick=function(){crmLog(id,'call');};
+ card.querySelector('#cdText').onclick=function(){crmLog(id,'text');};
+ card.querySelector('#cdMkt').onclick=function(){crmGoMarketing(id);};
+ card.querySelector('#cdDD').onclick=function(){crmRunDD(id);};
+ card.querySelector('#cdTx').onclick=function(){crmGoView('transact',id,'Opened Transact');};
+}
+function crmTimeline(c){var a=(c.acts||[]);if(!a.length)return '<div class="mut" style="font-size:12.5px">No activity yet.</div>';return a.slice(0,30).map(function(x){var ic=x.kind==='call'?'☎':x.kind==='text'?'✉':x.kind==='email'?'✉':x.kind==='note'?'✎':'•';return '<div class="crm-tl-item"><div class="crm-tl-ic">'+ic+'</div><div style="flex:1;min-width:0"><div class="crm-tl-b">'+mktEsc(x.summary||x.body||x.kind)+'</div><div class="crm-tl-t">'+(x.kind||'')+' · '+timeAgo(x.created_at)+'</div></div></div>';}).join('');}
+async function crmField(id,f,v){var c=crmGet(id);if(c)c[f]=v;var o={};o[f]=v;try{await sb.from('contacts').update(o).eq('id',id);}catch(e){}toast('Saved');if(f==='stage'||f==='ctype'){/* keep open */}loadCrm();}
+async function crmLog(id,kind){try{await sb.from('activities').insert({contact_id:id,kind:kind,summary:'Logged '+kind});await sb.from('contacts').update({last_touch_at:new Date().toISOString()}).eq('id',id);}catch(e){}toast('Logged '+kind);await loadCrm();openContact(id);}
+async function crmAddNote(id){var ta=document.getElementById('crmNoteBox');var txt=(ta&&ta.value||'').trim();if(!txt){return;}var c=crmGet(id);var insId=null;
+ try{var ins=await sb.from('activities').insert({contact_id:id,kind:'note',body:txt}).select().single();insId=ins.data&&ins.data.id;await sb.from('contacts').update({last_touch_at:new Date().toISOString()}).eq('id',id);}catch(e){toast('Could not save note');return;}
+ toast('Note saved');
+ try{var r=await fetch('/api/crm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'summarize',contact:{name:c.name},note:txt})});var j=await r.json();if(j&&j.ok){if(j.summary&&insId)await sb.from('activities').update({summary:j.summary}).eq('id',insId);if(j.task){await sb.from('tasks').insert({title:j.task,contact_id:id});toast('Task added: '+j.task);}}}catch(e){}
+ await loadCrm();openContact(id);
+}
+async function crmDraft(id,channel){var c=crmGet(id);var box=document.getElementById('crmDraftOut');if(box)box.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12.5px"><span class="nspin2"></span>Drafting a '+(channel||'text')+'…</div>';
+ try{var r=await fetch('/api/crm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'draft',channel:channel,contact:{name:c.name,ctype:c.ctype,stage:c.stage,property_address:c.property_address,source:c.source},activities:(c.acts||[]).slice(0,6)})});var j=await r.json();var msg=(j&&j.ok&&j.message)?j.message:'';
+  if(!msg){if(box)box.innerHTML='<div style="color:var(--danger);font-size:12.5px">Could not draft right now.</div>';return;}
+  var agent=(typeof bkVal==='function'?bkVal('agent_name',''):'')||'';msg=msg.replace(/\{\{agent\}\}/g,agent);
+  if(box){box.innerHTML='<textarea id="crmDraftTxt" rows="6" style="width:100%">'+mktEsc(msg)+'</textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-pri btn-sm" id="cdCopy">Copy</button><button class="btn btn-ghost btn-sm" id="cdSent">Log as sent</button><button class="btn btn-ghost btn-sm" id="cdRedo">Redo</button></div>';
+   document.getElementById('cdCopy').onclick=function(){copyText(document.getElementById('crmDraftTxt').value);};
+   document.getElementById('cdRedo').onclick=function(){crmDraft(id,channel);};
+   document.getElementById('cdSent').onclick=async function(){try{await sb.from('activities').insert({contact_id:id,kind:channel||'text',body:document.getElementById('crmDraftTxt').value,summary:'Sent '+(channel||'message')});await sb.from('contacts').update({last_touch_at:new Date().toISOString()}).eq('id',id);}catch(e){}toast('Logged as sent');await loadCrm();openContact(id);};
+  }
+ }catch(e){if(box)box.innerHTML='<div style="color:var(--danger);font-size:12.5px">Could not draft right now.</div>';}
+}
+function crmGoMarketing(id){var c=crmGet(id);try{var n=document.querySelector('[data-view="marketing"]');if(n)n.click();}catch(e){}var m=document.getElementById('crmModal');if(m)m.style.display='none';
+ setTimeout(function(){var set=function(i,v){var e=document.getElementById(i);if(e&&v!=null&&v!=='')e.value=v;};set('mAddr',c.property_address||'');var pm=c.property_meta||{};set('mBeds',pm.beds);set('mBaths',pm.baths);set('mSqft',pm.sqft);set('mPrice',pm.price);toast('Loaded '+(c.name||'').split(' ')[0]+'’s property into Marketing — add photos & Generate');},220);}
+function crmRunDD(id){var c=crmGet(id);try{var n=document.querySelector('[data-view="dd"]');if(n)n.click();}catch(e){}var m=document.getElementById('crmModal');if(m)m.style.display='none';setTimeout(function(){try{if(c.property_address&&typeof runDD==='function')runDD(c.property_address);}catch(e){}toast('Running Buyer Defense Report'+(c.property_address?(' · '+c.property_address):''));},220);}
+function crmGoView(view,id,label){try{var n=document.querySelector('[data-view="'+view+'"]');if(n)n.click();}catch(e){}var m=document.getElementById('crmModal');if(m)m.style.display='none';toast(label||'Opened');}
+function crmCss(){if(document.getElementById('crmCss'))return;var s=document.createElement('style');s.id='crmCss';s.textContent='.crm-sub{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap}.crm-sub button[data-cv]{border:none;background:none;font-family:var(--f);font-size:14px;font-weight:600;color:var(--muted);padding:7px 4px;cursor:pointer;border-bottom:2px solid transparent}.crm-sub button[data-cv].active{color:#0F4C46;border-bottom-color:#0F4C46}.crm-huddle-head{margin-bottom:14px}.crm-h1{font-size:20px;font-weight:700;color:#13241f}.crm-block{margin-bottom:18px}.crm-block-t{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px}.crm-hrow{display:flex;align-items:center;gap:11px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:#fff;margin-bottom:7px}.crm-ava{flex:none;width:34px;height:34px;border-radius:50%;background:#0F4C46;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}.crm-ava.lg{width:46px;height:46px;font-size:15px}.crm-ava.sm{width:28px;height:28px;font-size:10px}.crm-hn{font-weight:600;font-size:13.5px;color:#13241f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.crm-hs{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.crm-pipebar{display:flex;align-items:center;gap:8px;margin-bottom:12px}.crm-pill{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 15px;font-size:13px;font-weight:600;color:#6b6b60;cursor:pointer;font-family:var(--f)}.crm-pill.on{border-color:#0F4C46;background:#E7F1EF;color:#0F4C46}.crm-kanban{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px}.crm-col{flex:0 0 232px;background:#f4f2ec;border-radius:12px;padding:8px;min-height:120px}.crm-col.drag{background:#E7F1EF;outline:2px dashed #0F4C46}.crm-col-h{font-size:12px;font-weight:700;color:#13241f;padding:4px 6px 8px;display:flex;align-items:center;gap:6px}.crm-col-n{background:#fff;border-radius:999px;font-size:11px;padding:1px 7px;color:var(--muted)}.crm-kcard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:7px;cursor:pointer}.crm-kcard:hover{border-color:#0F4C46}.crm-kn{font-weight:600;font-size:13px;color:#13241f}.crm-kp{font-size:11.5px;color:var(--muted);margin-top:2px}.crm-kf{display:flex;align-items:center;justify-content:space-between;margin-top:8px}.crm-smart{display:flex;align-items:center;gap:7px;margin-bottom:12px;flex-wrap:wrap}.crm-thead,.crm-trow{display:grid;grid-template-columns:2.4fr 1fr 1.1fr .7fr 1fr;gap:10px;align-items:center;padding:11px 16px}.crm-thead{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:1px solid var(--line);background:#fbfaf6}.crm-trow{border-bottom:1px solid var(--line);cursor:pointer}.crm-trow:hover{background:#fbfaf6}.crm-tn{display:flex;align-items:center;gap:10px;min-width:0}.crm-tn .t{font-weight:600;font-size:13.5px;color:#13241f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.crm-tn .s{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.crm-cap{text-transform:capitalize;font-size:13px;color:#5c6660}.crm-d{font-family:var(--f)}.crm-dhead{display:flex;align-items:center;gap:13px;padding:18px 20px;border-bottom:1px solid var(--line)}.crm-dname{font-size:18px;font-weight:700;color:#13241f}.crm-dmeta{font-size:12.5px;color:var(--muted)}.crm-dctrls{display:flex;gap:12px;flex-wrap:wrap;padding:14px 20px;border-bottom:1px solid var(--line)}.crm-dctrls label{font-size:11px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;gap:4px}.crm-dctrls select,.crm-dctrls input{font-family:var(--f)}.crm-nba{margin:14px 20px 0;background:#FBF3E7;border:1px solid #f0dcbf;border-radius:10px;padding:11px 13px;font-size:13px;color:#6b5128}.crm-dgrid{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:16px 20px 22px}@media(max-width:720px){.crm-dgrid{grid-template-columns:1fr}}.crm-sect{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px}.crm-compose{border:1px solid var(--line);border-radius:11px;padding:12px;background:#fbfaf6}.crm-actions{display:flex;flex-direction:column;gap:8px;align-items:stretch}.crm-actions .btn{justify-content:center}.crm-timeline{max-height:260px;overflow:auto}.crm-tl-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f0ede4}.crm-tl-ic{flex:none;width:24px;height:24px;border-radius:50%;background:#E7F1EF;color:#0F4C46;display:flex;align-items:center;justify-content:center;font-size:12px}.crm-tl-b{font-size:13px;color:#2c352f;line-height:1.4}.crm-tl-t{font-size:11px;color:var(--muted);text-transform:capitalize;margin-top:2px}';document.head.appendChild(s);}
 
 /* ===== Brand Kit (Settings setup + completion nudge + branding source) ===== */
 var BRAND_KIT={};
@@ -1567,7 +1718,7 @@ function buildLanding2(){
 
 /* bootstrap */
 var _hydrated=false;
-async function onLogin(session){var l=document.getElementById('landing');if(l)l.style.display='none';showApp(session);wireOrgRename();buildSettings();rebuildProspect();rebuildTransact();if(!_hydrated){_hydrated=true;await hydrate();}await applyOrgStats(session);fillSettings(session);loadSites();wireSites();rebuildMarketing();loadCampaigns();loadTransactions();renderProspectStats();loadBrandKit();}
+async function onLogin(session){var l=document.getElementById('landing');if(l)l.style.display='none';showApp(session);wireOrgRename();buildSettings();rebuildProspect();rebuildTransact();if(!_hydrated){_hydrated=true;await hydrate();}await applyOrgStats(session);fillSettings(session);loadSites();wireSites();rebuildMarketing();loadCampaigns();loadTransactions();renderProspectStats();loadBrandKit();rebuildCrm();}
 if((location.hash||'').indexOf('#shoot/')===0){ renderShootPage((location.hash.split('/')[1]||'').trim()); }
 else{
 buildLanding3();buildOverlay();showLanding();
