@@ -1177,7 +1177,7 @@ function crmAddModal(){var m=mktModal('crmAddModal',460);m.style.display='flex';
  +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px"><button class="btn btn-ghost btn-sm" id="caCancel">Cancel</button><button class="btn btn-pri btn-sm" id="caSave">Add contact</button></div></div>';
  c.querySelector('#caCancel').onclick=function(){m.style.display='none';};
  c.querySelector('#caSave').onclick=async function(){var nm=(document.getElementById('caName').value||'').trim();if(!nm){toast('Add a name');return;}var ctc=(document.getElementById('caContact').value||'').trim();var rec={name:nm,ctype:document.getElementById('caType').value,source:(document.getElementById('caSrc').value||'').trim()||'Manual',stage:'New',property_address:(document.getElementById('caProp').value||'').trim()||null,last_touch_at:new Date().toISOString()};if(/@/.test(ctc))rec.email=ctc;else if(ctc)rec.phone=ctc;
-  try{var r=await sb.from('contacts').insert(rec).select().single();if(r.error)throw r.error;m.style.display='none';toast('Contact added');if(CRM2.autopilot){toast('⚡ Autopilot drafting a first touch…');await autopilotFirstTouch(r.data.id);}await loadCrm();openContact(r.data.id);}catch(e){toast('Could not add contact');}};
+  try{var r=await sb.from('contacts').insert(rec).select().single();if(r.error)throw r.error;m.style.display='none';toast('Contact added');if(CRM2.autopilot){toast('⚡ Autopilot drafting a first touch…');await autopilotFirstTouch(r.data.id,r.data);}await loadCrm();openContact(r.data.id);}catch(e){toast('Could not add contact');}};
 }
 
 /* ---- Contact record (drawer) ---- */
@@ -1330,7 +1330,7 @@ function commsConnect(kind){var m=mktModal('commsModal',520);m.style.display='fl
  var mk=c.querySelector('#commsMark');if(mk)mk.onclick=async function(){try{await sb.from('integrations').insert({channel:kind,status:'connected'});}catch(e){}m.style.display='none';toast((isEmail?'Email':'Text & calls')+' connected');await loadCrm();renderCrm();};
  var dc=c.querySelector('#commsDisc');if(dc)dc.onclick=async function(){try{await sb.from('integrations').delete().eq('channel',kind);}catch(e){}m.style.display='none';toast('Disconnected');await loadCrm();renderCrm();};
 }
-async function autopilotFirstTouch(id){var c=crmGet(id)||{id:id};
+async function autopilotFirstTouch(id,seed){var c=seed||crmGet(id)||{id:id};
  var msg='';
  try{var r=await fetch('/api/crm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'draft',channel:'text',goal:'This is a brand-new inbound lead. Send an instant, warm first response: thank them, ask one qualifying question (timeline or what they are looking for), and invite a reply. Under 60 words.',contact:{name:c.name,ctype:c.ctype,stage:'New',property_address:c.property_address,source:c.source},activities:[]})});var j=await r.json();if(j&&j.ok&&j.message)msg=j.message;}catch(e){}
  if(!msg)msg='Hi'+(c.name?(' '+String(c.name).split(' ')[0]):'')+', thanks for reaching out! Quick question so I can help fast — what are you looking for, and what’s your timeline?';
