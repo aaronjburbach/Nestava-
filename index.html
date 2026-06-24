@@ -1095,10 +1095,12 @@ async function loadCrm(){if(!sb)return;try{
   sb.from('activities').select('*').order('created_at',{ascending:false}),
   sb.from('tasks').select('*').eq('done',false).order('due_at',{ascending:true}),
   sb.from('sequences').select('*').order('created_at',{ascending:false}),
-  sb.from('sequence_enrollments').select('*')
+  sb.from('sequence_enrollments').select('*'),
+  sb.from('integrations').select('*')
  ]);
  var cs=res[0].data||[],acts=res[1].data||[],tks=res[2].data||[];
  CRM2.sequences=res[3].data||[];CRM2.enrollments=res[4].data||[];
+ var ints=res[5].data||[];CRM2.autopilot=ints.some(function(i){return i.channel==='autopilot';});CRM2.commsEmail=ints.some(function(i){return i.channel==='comms_email';});CRM2.commsSms=ints.some(function(i){return i.channel==='comms_sms';});
  var byc={};acts.forEach(function(a){if(a.contact_id){(byc[a.contact_id]=byc[a.contact_id]||[]).push(a);}});
  cs.forEach(function(c){c.acts=byc[c.id]||[];if(!c.last_touch_at)c.last_touch_at=(c.acts[0]&&c.acts[0].created_at)||c.created_at;if(!c.stage)c.stage='New';if(!c.ctype)c.ctype='buyer';c._score=crmScore(c);});
  CRM2.contacts=cs;CRM2.tasks=tks;renderCrm();
@@ -1116,6 +1118,8 @@ function renderCrmToday(el){
  var greet='Here’s who needs you today';
  var html='<div class="crm-huddle-head"><div><div class="crm-h1">Morning Huddle</div><div class="mut" style="font-size:13px">'+greet+' · '+cs.length+' contacts in your book</div></div></div>';
  var blocks=[];
+ var autop=cs.filter(function(c){return (c.acts||[]).length&&c.acts[0].kind==='auto_draft';}).slice(0,6);
+ if(autop.length)blocks.push(['⚡ Speed-to-lead — AI drafted a first touch',autop.map(function(c){return '<div class="crm-hrow"><div class="crm-ava" style="background:#C2792E">⚡</div><div style="flex:1;min-width:0"><div class="crm-hn">'+mktEsc(c.name)+'</div><div class="crm-hs">'+mktEsc(String(c.acts[0].body||'').slice(0,72))+'</div></div><button class="btn btn-ghost btn-sm" data-open="'+c.id+'">Review</button><button class="btn btn-pri btn-sm" data-autosend="'+c.id+'">Send</button></div>';}).join('')]);
  var seqMap={};(CRM2.sequences||[]).forEach(function(s){seqMap[s.id]=s;});var dueE=(CRM2.enrollments||[]).filter(function(e){return e.status==='active'&&crmDays(e.next_due_at)>=0;});
  if(dueE.length)blocks.push(['Action plan steps due',dueE.slice(0,6).map(function(e){var c=crmGet(e.contact_id);var s=seqMap[e.sequence_id];var step=s&&s.steps&&s.steps[e.current_step];if(!c||!step)return '';var lbl=(step.channel||'task')+' · '+mktEsc(String(step.title||step.subject||step.body||'')).slice(0,56);return '<div class="crm-hrow"><div class="crm-ava" style="background:#3a7d6e">↳</div><div style="flex:1;min-width:0"><div class="crm-hn">'+mktEsc(c.name)+' <span class="mut" style="font-weight:500">· '+mktEsc(s.name)+'</span></div><div class="crm-hs">'+lbl+'</div></div>'+(step.channel==='task'?'':'<button class="btn btn-pri btn-sm" data-stepdraft="'+e.contact_id+'|'+(step.channel||'text')+'">Draft</button>')+'<button class="btn btn-ghost btn-sm" data-stepdone="'+e.id+'">Done</button></div>';}).join('')]);
  if(tks.length)blocks.push(['Tasks due',tks.map(function(t){var c=t.contact_id?crmGet(t.contact_id):null;return '<div class="crm-hrow"><div class="crm-ava" style="background:#C2792E">✓</div><div style="flex:1;min-width:0"><div class="crm-hn">'+mktEsc(t.title||'Task')+'</div><div class="crm-hs">'+(c?mktEsc(c.name):'General')+(t.due_at?(' · due '+timeAgo(t.due_at)):'')+'</div></div><button class="btn btn-ghost btn-sm" data-done="'+t.id+'">Done</button>'+(c?'<button class="btn btn-pri btn-sm" data-msg="'+c.id+'">Draft</button>':'')+'</div>';}).join('')]);
@@ -1130,6 +1134,7 @@ function renderCrmToday(el){
  el.querySelectorAll('[data-done]').forEach(function(b){b.onclick=async function(){try{await sb.from('tasks').update({done:true}).eq('id',b.dataset.done);}catch(e){}toast('Task done');loadCrm();};});
  el.querySelectorAll('[data-stepdraft]').forEach(function(b){b.onclick=function(){var p=b.dataset.stepdraft.split('|');openContact(p[0]);setTimeout(function(){crmDraft(p[0],p[1]);},260);};});
  el.querySelectorAll('[data-stepdone]').forEach(function(b){b.onclick=function(){seqAdvance(b.dataset.stepdone);};});
+ el.querySelectorAll('[data-autosend]').forEach(function(b){b.onclick=function(){crmSendAuto(b.dataset.autosend);};});
 }
 
 /* ---- Pipeline (Kanban) ---- */
@@ -1172,7 +1177,7 @@ function crmAddModal(){var m=mktModal('crmAddModal',460);m.style.display='flex';
  +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px"><button class="btn btn-ghost btn-sm" id="caCancel">Cancel</button><button class="btn btn-pri btn-sm" id="caSave">Add contact</button></div></div>';
  c.querySelector('#caCancel').onclick=function(){m.style.display='none';};
  c.querySelector('#caSave').onclick=async function(){var nm=(document.getElementById('caName').value||'').trim();if(!nm){toast('Add a name');return;}var ctc=(document.getElementById('caContact').value||'').trim();var rec={name:nm,ctype:document.getElementById('caType').value,source:(document.getElementById('caSrc').value||'').trim()||'Manual',stage:'New',property_address:(document.getElementById('caProp').value||'').trim()||null,last_touch_at:new Date().toISOString()};if(/@/.test(ctc))rec.email=ctc;else if(ctc)rec.phone=ctc;
-  try{var r=await sb.from('contacts').insert(rec).select().single();if(r.error)throw r.error;m.style.display='none';toast('Contact added');await loadCrm();openContact(r.data.id);}catch(e){toast('Could not add contact');}};
+  try{var r=await sb.from('contacts').insert(rec).select().single();if(r.error)throw r.error;m.style.display='none';toast('Contact added');if(CRM2.autopilot){toast('⚡ Autopilot drafting a first touch…');await autopilotFirstTouch(r.data.id);}await loadCrm();openContact(r.data.id);}catch(e){toast('Could not add contact');}};
 }
 
 /* ---- Contact record (drawer) ---- */
@@ -1217,7 +1222,8 @@ async function crmDraft(id,channel,goal){var c=crmGet(id);var box=document.getEl
  try{var r=await fetch('/api/crm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'draft',channel:channel,goal:goal||'',contact:{name:c.name,ctype:c.ctype,stage:c.stage,property_address:c.property_address,source:c.source},activities:(c.acts||[]).slice(0,6)})});var j=await r.json();var msg=(j&&j.ok&&j.message)?j.message:'';
   if(!msg){if(box)box.innerHTML='<div style="color:var(--danger);font-size:12.5px">Could not draft right now.</div>';return;}
   var agent=(typeof bkVal==='function'?bkVal('agent_name',''):'')||'';msg=msg.replace(/\{\{agent\}\}/g,agent);
-  if(box){box.innerHTML='<textarea id="crmDraftTxt" rows="6" style="width:100%">'+mktEsc(msg)+'</textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-pri btn-sm" id="cdCopy">Copy</button><button class="btn btn-ghost btn-sm" id="cdSent">Log as sent</button><button class="btn btn-ghost btn-sm" id="cdRedo">Redo</button></div>';
+  if(box){box.innerHTML='<textarea id="crmDraftTxt" rows="6" style="width:100%">'+mktEsc(msg)+'</textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-pri btn-sm" id="cdSend">Send</button><button class="btn btn-ghost btn-sm" id="cdCopy">Copy</button><button class="btn btn-ghost btn-sm" id="cdSent">Log as sent</button><button class="btn btn-ghost btn-sm" id="cdRedo">Redo</button></div>';
+   var _cs=document.getElementById('cdSend');if(_cs)_cs.onclick=function(){crmSend(id,channel,document.getElementById('crmDraftTxt').value);var _m=document.getElementById('crmModal');if(_m)_m.style.display='none';};
    document.getElementById('cdCopy').onclick=function(){copyText(document.getElementById('crmDraftTxt').value);};
    document.getElementById('cdRedo').onclick=function(){crmDraft(id,channel);};
    document.getElementById('cdSent').onclick=async function(){try{await sb.from('activities').insert({contact_id:id,kind:channel||'text',body:document.getElementById('crmDraftTxt').value,summary:'Sent '+(channel||'message')});await sb.from('contacts').update({last_touch_at:new Date().toISOString()}).eq('id',id);}catch(e){}toast('Logged as sent');await loadCrm();openContact(id);};
@@ -1241,7 +1247,7 @@ function renderCrmAutomations(el){crm2Css();
  var seqs=CRM2.sequences||[];var enr=CRM2.enrollments||[];
  var enrCount=function(sid){return enr.filter(function(e){return e.sequence_id===sid&&e.status==='active';}).length;};
  var dormant=CRM2.contacts.filter(function(c){return crmDays(c.last_touch_at)>=45&&(c.ctype==='past'||c.stage!=='Closed');}).sort(function(a,b){return crmDays(b.last_touch_at)-crmDays(a.last_touch_at);}).slice(0,12);
- var html='';
+ var html=commsCard();
  html+='<div class="crm2-card"><div class="crm2-h"><div class="crm2-t">Action Plans</div><button class="btn btn-pri btn-sm" id="seqNew">+ New action plan</button></div>';
  if(!seqs.length)html+='<div class="mut" style="font-size:13px;margin:4px 0 12px">Automated, multi-step follow-up so no lead goes quiet. Start from a proven template:</div><div class="crm2-tpls">'+SEQ_TEMPLATES.map(function(t,i){return '<button class="crm2-tpl" data-tpl="'+i+'"><b>'+t.name+'</b><span>'+t.steps.length+' steps · '+t.blurb+'</span></button>';}).join('')+'</div>';
  else html+='<div class="crm2-seqs">'+seqs.map(function(s){return '<div class="crm2-seq"><div style="flex:1;min-width:0"><div class="crm2-sn">'+mktEsc(s.name)+'</div><div class="crm2-ss">'+((s.steps||[]).length)+' steps · '+enrCount(s.id)+' active</div></div><button class="btn btn-pri btn-sm" data-enroll="'+s.id+'">Enroll</button><button class="btn btn-ghost btn-sm" data-editseq="'+s.id+'">Edit</button></div>';}).join('')+'</div><div style="margin-top:8px"><span class="link" id="seqTpls">+ Add from a template</span></div>';
@@ -1260,6 +1266,7 @@ function renderCrmAutomations(el){crm2Css();
  el.querySelectorAll('[data-open]').forEach(function(b){b.onclick=function(){openContact(b.dataset.open);};});
  el.querySelectorAll('[data-react]').forEach(function(b){b.onclick=function(){var id=b.dataset.react;openContact(id);setTimeout(function(){crmDraft(id,'text','Re-engage this contact warmly — acknowledge it has been a while and offer something genuinely useful (a quick market update or to catch up). Keep it light, no pressure.');},260);};});
  var mb=document.getElementById('matchBtn');if(mb)mb.onclick=matchModal;
+ wireComms();
 }
 async function seqCreateFromTpl(i){var t=SEQ_TEMPLATES[i];if(!t)return;try{await sb.from('sequences').insert({name:t.name,steps:t.steps});toast('Action plan added: '+t.name);await loadCrm();renderCrm();}catch(e){toast('Could not create');}}
 function seqTplPick(){var m=mktModal('seqTplModal',460);m.style.display='flex';m.firstChild.innerHTML='<div style="padding:20px"><div style="font-size:16px;font-weight:700;margin-bottom:10px">Add an action plan</div><div class="crm2-tpls" style="grid-template-columns:1fr">'+SEQ_TEMPLATES.map(function(t,i){return '<button class="crm2-tpl" data-tpl2="'+i+'"><b>'+t.name+'</b><span>'+t.steps.length+' steps · '+t.blurb+'</span></button>';}).join('')+'</div><div style="text-align:right;margin-top:12px"><button class="btn btn-ghost btn-sm" id="seqTplClose">Close</button></div></div>';m.firstChild.querySelector('#seqTplClose').onclick=function(){m.style.display='none';};m.firstChild.querySelectorAll('[data-tpl2]').forEach(function(b){b.onclick=function(){m.style.display='none';seqCreateFromTpl(+b.dataset.tpl2);};});}
@@ -1304,6 +1311,39 @@ function matchFind(addr,price,beds){var tok=matchToken(addr);var buyers=CRM2.con
  var gb=document.getElementById('mmGraphic');if(gb)gb.onclick=function(){matchGraphic(listing);};
 }
 function matchGraphic(listing){var m=document.getElementById('matchModal');if(m)m.style.display='none';try{var n=document.querySelector('[data-view="marketing"]');if(n)n.click();}catch(e){}setTimeout(function(){var set=function(i,v){var e=document.getElementById(i);if(e&&v!=null&&v!=='')e.value=v;};set('mAddr',listing.addr);set('mBeds',listing.beds);set('mPrice',listing.price);toast('Loaded listing into Marketing — add photos & Generate the Just-Listed graphic');},220);}
+
+/* ===== CRM Phase 3: Communications + Speed-to-Lead autopilot + send ===== */
+function commsCard(){var ap=CRM2.autopilot,ce=CRM2.commsEmail,cs=CRM2.commsSms;
+ var rowS='display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid var(--line)';
+ return '<div class="crm2-card"><div class="crm2-t">Communications & Speed-to-Lead</div><div class="mut" style="font-size:12.5px;margin:2px 0 4px">The industry median first reply to a new lead is 15+ hours — leads contacted within 5 minutes convert up to 21× more. With autopilot on, Nestava drafts a reply the instant a lead lands.</div>'
+ +'<div style="'+rowS+'"><div><div style="font-weight:600;font-size:13.5px;color:#13241f">Speed-to-lead autopilot</div><div style="font-size:12px;color:var(--muted)">Auto-draft a first touch the moment a new lead is added'+((ce||cs)?'':' (connect a channel below to auto-send)')+'</div></div><button class="btn '+(ap?'btn-pri':'btn-ghost')+' btn-sm" id="apToggle">'+(ap?'On':'Off')+'</button></div>'
+ +'<div style="'+rowS+'"><div><div style="font-weight:600;font-size:13.5px;color:#13241f">Email sending '+(ce?'<span class="badge green" style="margin-left:4px">Connected</span>':'')+'</div><div style="font-size:12px;color:var(--muted)">Send branded emails via Resend</div></div><button class="btn '+(ce?'btn-ghost':'btn-pri')+' btn-sm" data-comms="comms_email">'+(ce?'Manage':'Connect')+'</button></div>'
+ +'<div style="'+rowS+'"><div><div style="font-weight:600;font-size:13.5px;color:#13241f">Text & calls '+(cs?'<span class="badge green" style="margin-left:4px">Connected</span>':'')+'</div><div style="font-size:12px;color:var(--muted)">Two-way SMS, calling & missed-call text-back via Twilio</div></div><button class="btn '+(cs?'btn-ghost':'btn-pri')+' btn-sm" data-comms="comms_sms">'+(cs?'Manage':'Connect')+'</button></div>'
+ +'</div>';
+}
+function wireComms(){var t=document.getElementById('apToggle');if(t)t.onclick=commsToggleAutopilot;document.querySelectorAll('[data-comms]').forEach(function(b){b.onclick=function(){commsConnect(b.dataset.comms);};});}
+async function commsToggleAutopilot(){try{if(CRM2.autopilot){await sb.from('integrations').delete().eq('channel','autopilot');toast('Autopilot off');}else{await sb.from('integrations').insert({channel:'autopilot',status:'on'});toast('Speed-to-lead autopilot ON — new leads get an instant AI first touch');}}catch(e){}await loadCrm();renderCrm();}
+function commsConnect(kind){var m=mktModal('commsModal',520);m.style.display='flex';var c=m.firstChild;var isEmail=kind==='comms_email';var connected=isEmail?CRM2.commsEmail:CRM2.commsSms;
+ var steps=isEmail?['Create a free account at resend.com and add your sending domain (or use the Resend test domain to start).','Create a Resend API key.','Add it in Vercel → Settings → Environment Variables as RESEND_API_KEY (and RESEND_FROM as your “Name <you@domain>”), then redeploy.','Emails you send from a contact go out for real.']:['Create a Twilio account and buy/port a phone number with SMS + voice.','Grab your Account SID and Auth Token.','Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM in Vercel → Settings → Environment Variables, then redeploy.','Two-way texting, calling and missed-call text-back activate automatically.'];
+ c.innerHTML='<div style="padding:22px"><div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Connect a channel</div><div style="font-size:19px;font-weight:700;margin:4px 0 6px">'+(isEmail?'Email (Resend)':'Text & calls (Twilio)')+'</div><div class="mut" style="font-size:12.5px;margin-bottom:12px">Marking this connected lets Nestava route messages here. Live send activates once the keys above are set; until then, sends are logged so the workflow still works.</div><ol style="margin:0 0 16px 18px;padding:0;display:grid;gap:9px">'+steps.map(function(s){return '<li style="font-size:13px;line-height:1.5">'+s+'</li>';}).join('')+'</ol><div style="display:flex;gap:8px;justify-content:flex-end">'+(connected?'<button class="btn btn-ghost btn-sm" id="commsDisc" style="color:var(--danger)">Disconnect</button>':'')+'<button class="btn btn-ghost btn-sm" id="commsClose">Close</button>'+(connected?'':'<button class="btn btn-pri btn-sm" id="commsMark">Mark as connected</button>')+'</div></div>';
+ c.querySelector('#commsClose').onclick=function(){m.style.display='none';};
+ var mk=c.querySelector('#commsMark');if(mk)mk.onclick=async function(){try{await sb.from('integrations').insert({channel:kind,status:'connected'});}catch(e){}m.style.display='none';toast((isEmail?'Email':'Text & calls')+' connected');await loadCrm();renderCrm();};
+ var dc=c.querySelector('#commsDisc');if(dc)dc.onclick=async function(){try{await sb.from('integrations').delete().eq('channel',kind);}catch(e){}m.style.display='none';toast('Disconnected');await loadCrm();renderCrm();};
+}
+async function autopilotFirstTouch(id){var c=crmGet(id)||{id:id};
+ var msg='';
+ try{var r=await fetch('/api/crm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'draft',channel:'text',goal:'This is a brand-new inbound lead. Send an instant, warm first response: thank them, ask one qualifying question (timeline or what they are looking for), and invite a reply. Under 60 words.',contact:{name:c.name,ctype:c.ctype,stage:'New',property_address:c.property_address,source:c.source},activities:[]})});var j=await r.json();if(j&&j.ok&&j.message)msg=j.message;}catch(e){}
+ if(!msg)msg='Hi'+(c.name?(' '+String(c.name).split(' ')[0]):'')+', thanks for reaching out! Quick question so I can help fast — what are you looking for, and what’s your timeline?';
+ var agent=(typeof bkVal==='function'?bkVal('agent_name',''):'')||'';msg=msg.replace(/\{\{agent\}\}/g,agent);
+ try{await sb.from('activities').insert({contact_id:id,kind:'auto_draft',body:msg,summary:'⚡ AI first-touch drafted (speed-to-lead)'});}catch(e){}
+}
+async function crmSend(id,channel,body){var c=crmGet(id)||{};var to=channel==='email'?(c.email||''):(c.phone||c.email||'');var sent=false,reason='';
+ try{var r=await fetch('/api/comms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({channel:channel,to:to,subject:'A note from '+((typeof bkVal==='function'?bkVal('agent_name',''):'')||'your agent'),body:body})});var j=await r.json();sent=!!(j&&j.ok);reason=j&&j.error;}catch(e){}
+ try{await sb.from('activities').insert({contact_id:id,kind:channel,body:body,summary:(sent?'Sent ':'Queued ')+(channel==='email'?'email':'text')});await sb.from('contacts').update({last_touch_at:new Date().toISOString()}).eq('id',id);}catch(e){}
+ toast(sent?('Sent to '+(c.name||'contact')):('Logged — connect '+(channel==='email'?'email (Resend)':'SMS (Twilio)')+' to send automatically'));
+ await loadCrm();
+}
+function crmSendAuto(id){var c=crmGet(id);if(!c)return;var draft=(c.acts||[]).filter(function(a){return a.kind==='auto_draft';})[0];var body=draft?draft.body:'';var channel=(c.phone?'text':'email');crmSend(id,channel,body);}
 
 /* ===== Brand Kit (Settings setup + completion nudge + branding source) ===== */
 var BRAND_KIT={};
