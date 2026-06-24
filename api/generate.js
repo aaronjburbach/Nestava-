@@ -39,6 +39,15 @@ function fmtPrice(v) { var n = Number(v); return (v && !isNaN(n)) ? '$' + n.toLo
 
 function buildPrompt(type, inputs) {
   var i = inputs || {};
+  if (type === 'agent_bio') {
+    var who = i.agent || 'the agent';
+    return 'Write a warm, credible, first-person professional bio for a real estate agent named ' + who +
+      (i.title ? (', ' + i.title) : '') + (i.brokerage ? (' at ' + i.brokerage) : '') + '.' +
+      (i.areas ? (' They serve these areas: ' + i.areas + '.') : '') +
+      ' Tone: ' + (i.tone || 'warm, credible, concise') + '. Two to three short paragraphs.' +
+      ' No clichés, no fabricated awards, stats, or designations, and strictly Fair-Housing compliant (describe service and expertise, never who should live somewhere).' +
+      ' Return ONLY a JSON object: {"body":"the bio text with real \\n line breaks between paragraphs","headline":"a short personal tagline under 8 words"}. No markdown, no commentary.';
+  }
   var facts = [
     i.addr ? 'Address / area: ' + i.addr : null,
     i.beds ? 'Bedrooms: ' + i.beds : null,
