@@ -1852,11 +1852,12 @@ async function rebuildSites(){var v=document.getElementById('view-sites');if(!v)
  v.innerHTML='<div class="ph row"><div><h1>Sites</h1><p>Spin up a beautiful, IDX-ready website that builds itself from your Brand Kit — live in minutes, fully yours, no per-lead fees.</p></div><button class="btn btn-pri" id="siteNew"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New site</button></div>'
  +'<div class="sec-t">Your sites</div><div id="sitesGrid" class="grid c3" style="margin-bottom:26px"></div>'
  +'<div class="sec-t">Themes <span class="mut">· every site is branded with your colors, logo & headshot automatically</span></div><div id="siteThemes" class="grid c3" style="margin-bottom:26px"></div>'
- +'<div class="sec-t">Embeddable widgets <span class="mut">· drop into any site — every lead flows into your CRM (coming in Phase 3)</span></div>'
+ +'<div class="sec-t">Embeddable widgets <span class="mut">· paste into any site — every lead flows into your CRM</span></div>'
  +'<div class="grid c4">'
- +['Home Valuation|Instant AVM that captures seller leads','IDX Search|MLS search bar for any page','Lead Form|Buyer & seller capture','Mortgage Calculator|Payment & affordability'].map(function(w){var p=w.split('|');return '<div class="card cp"><div style="font-weight:600;font-size:13.5px">'+p[0]+'</div><p style="font-size:12px;color:var(--muted);margin-top:4px">'+p[1]+'</p><button class="btn btn-ghost btn-sm" style="margin-top:10px" disabled>Copy embed code</button></div>';}).join('')
+ +[['valuation','Home Valuation','Instant valuation that captures seller leads'],['idxsearch','IDX Search','MLS search bar for any page'],['leadform','Lead Form','Buyer & seller capture'],['mortgage','Mortgage Calculator','Payment & affordability']].map(function(w){return '<div class="card cp"><div style="font-weight:600;font-size:13.5px">'+w[1]+'</div><p style="font-size:12px;color:var(--muted);margin-top:4px">'+w[2]+'</p><button class="btn btn-ghost btn-sm" style="margin-top:10px" data-embed="'+w[0]+'">Copy embed code</button></div>';}).join('')
  +'</div>';
  document.getElementById('siteNew').onclick=siteNewModal;
+ v.querySelectorAll('[data-embed]').forEach(function(btn){btn.onclick=function(){siteEmbedCode(btn.dataset.embed);};});
  renderSiteThemeGallery();
  await loadSitesGrid();
 }
@@ -2074,10 +2075,99 @@ async function siteAIBio(i,btn){var ctx=siteEditModal._ctx;if(!ctx)return;ctx.co
 
 function siteCss(){if(document.getElementById('siteCss'))return;var s=document.createElement('style');s.id='siteCss';s.textContent='.grid.c3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}@media(max-width:820px){.grid.c3{grid-template-columns:1fr 1fr}}@media(max-width:560px){.grid.c3{grid-template-columns:1fr}}.sb-card{border:1px solid var(--line);border-radius:12px;background:#fbfaf6;padding:13px 14px;margin-bottom:10px}.sb-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}.sb-type{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#0F4C46;flex:1}.sb-ctrls{display:flex;gap:4px}.sb-ctrls button{border:1px solid var(--line);background:#fff;border-radius:7px;width:28px;height:28px;cursor:pointer;font-size:13px;color:#5c6660;font-family:var(--f)}.sb-ctrls button:hover{border-color:#0F4C46;color:#0F4C46}.sbf{display:block;margin-bottom:8px}.sbf span{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:3px}.sbf input,.sbf textarea{width:100%;font-family:var(--f);font-size:13.5px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}';document.head.appendChild(s);}
 
+/* ===== SITES Phase 3: lead capture -> CRM, embeddable widgets, SEO =====
+   Declared after Phase 1/2 so these override renderPublicSite / wireSitePublic
+   / siteLeadForm. */
+
+/* Lead form with a honeypot field (company) for spam control. */
+function siteLeadForm(b,accent,heading,sub){accent=accent||(b&&b.accent)||'#C2792E';heading=mktEsc(heading||'Let’s talk about your move');sub=mktEsc(sub||'Tell me what you’re looking for and I’ll be in touch right away.');
+ return '<section id="contact" style="padding:70px 24px;background:#14201C"><div style="max-width:560px;margin:0 auto;text-align:center"><div style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:'+accent+'">Get in touch</div><h2 style="font-size:32px;font-weight:800;color:#fff;margin:6px 0 8px;letter-spacing:-.02em">'+heading+'</h2><p style="color:rgba(255,255,255,.7);margin-bottom:26px">'+sub+'</p><form id="siteLead" style="display:grid;gap:12px;text-align:left"><input name="company" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true"/><div style="display:flex;gap:12px"><input name="name" placeholder="Your name" required style="flex:1;padding:14px;border-radius:10px;border:1px solid #2c3a35;background:#1c2a25;color:#fff;font-family:var(--f);font-size:15px"/><input name="phone" placeholder="Phone" style="flex:1;padding:14px;border-radius:10px;border:1px solid #2c3a35;background:#1c2a25;color:#fff;font-family:var(--f);font-size:15px"/></div><input name="email" type="email" placeholder="Email" style="padding:14px;border-radius:10px;border:1px solid #2c3a35;background:#1c2a25;color:#fff;font-family:var(--f);font-size:15px"/><textarea name="msg" rows="3" placeholder="What are you looking for?" style="padding:14px;border-radius:10px;border:1px solid #2c3a35;background:#1c2a25;color:#fff;font-family:var(--f);font-size:15px"></textarea><button type="submit" style="padding:15px;border-radius:10px;border:none;background:'+accent+';color:#fff;font-weight:700;font-size:16px;cursor:pointer;font-family:var(--f)">Send message</button></form><div id="siteLeadOk" style="display:none;color:#fff;font-size:16px;padding:24px">Thanks — I’ll be in touch shortly. ✨</div></div></section>';}
+
+function wireSitePublic(wrap,b,slug){var f=wrap.querySelector('#siteLead');if(!f)return;f.onsubmit=async function(e){e.preventDefault();var ok=wrap.querySelector('#siteLeadOk');var payload={slug:slug||'',name:(f.name&&f.name.value)||'',phone:(f.phone&&f.phone.value)||'',email:(f.email&&f.email.value)||'',message:(f.msg&&f.msg.value)||'',company:(f.company&&f.company.value)||'',kind:'inquiry'};
+  var sent=false;try{var r=await fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});var j=await r.json();sent=!!(j&&j.ok);}catch(e2){}
+  f.style.display='none';if(ok){ok.style.display='block';if(!sent)ok.innerHTML='Thanks! If you don’t hear back shortly, reach me at '+mktEsc(b.phone||b.email||'')+'.';}};}
+
+/* SEO + AI-search: dynamic meta, Open Graph, and RealEstateAgent JSON-LD. */
+function siteUpsertMeta(attr,key,val){var sel='meta['+attr+'="'+key+'"]';var el=document.head.querySelector(sel);if(!el){el=document.createElement('meta');el.setAttribute(attr,key);document.head.appendChild(el);}el.setAttribute('content',val||'');}
+function siteInjectSEO(content,b,blocks){try{
+ var desc=content.seo_desc||('Homes for sale and expert real estate guidance with '+(b.brokerage||'')+'.');
+ var img=b.headshot_url||b.logo_url||'';
+ siteUpsertMeta('name','description',desc);
+ siteUpsertMeta('property','og:title',content.seo_title||b.brokerage||'');
+ siteUpsertMeta('property','og:description',desc);
+ siteUpsertMeta('property','og:type','website');
+ siteUpsertMeta('property','og:site_name',b.brokerage||'');
+ if(img)siteUpsertMeta('property','og:image',img);
+ siteUpsertMeta('name','twitter:card',img?'summary_large_image':'summary');
+ var areas=[];(blocks||[]).forEach(function(bl){if(bl.type==='areas'&&Array.isArray(bl.items))areas=areas.concat(bl.items);});if(!areas.length)areas=content.areas||[];
+ var ld={"@context":"https://schema.org","@type":"RealEstateAgent","name":b.agent_name||b.brokerage||'',"description":desc,"url":location.href};
+ if(img)ld.image=img;if(b.phone)ld.telephone=b.phone;if(b.email)ld.email=b.email;if(b.brokerage)ld.worksFor={"@type":"Organization","name":b.brokerage};if(areas.length)ld.areaServed=areas;
+ var s=document.getElementById('siteLd');if(!s){s=document.createElement('script');s.id='siteLd';s.type='application/ld+json';document.head.appendChild(s);}s.textContent=JSON.stringify(ld);
+}catch(e){}}
+
+function renderPublicSite(slug){return (async function(){
+ var wrap=document.createElement('div');wrap.id='sitePage';wrap.style.cssText='position:fixed;inset:0;z-index:1500;background:#fff;overflow:auto';document.body.appendChild(wrap);
+ wrap.innerHTML='<div style="max-width:600px;margin:0 auto;padding:80px 22px;font-family:var(--f);color:#15221E"><span class="nspin2"></span> Loading…</div>';
+ var site=null;try{if(sb&&slug){var r=await sb.from('sites').select('*').eq('slug',slug).single();site=r.data;}}catch(e){}
+ if(!site){wrap.innerHTML='<div style="max-width:560px;margin:0 auto;padding:90px 22px;text-align:center;font-family:var(--f)"><div style="font-size:22px;font-weight:700">Site not found</div><div style="color:#6b6b60;margin-top:8px">This site may be unpublished or the link is incorrect.</div></div>';return;}
+ var content=Object.assign({},siteDefaultContent(site.name),site.content||{});var b=content.brand||siteBrand();var blocks=siteBlocks(site);
+ try{document.title=content.seo_title||site.name||'Nestava site';}catch(e){}
+ siteInjectSEO(content,b,blocks);
+ wrap.innerHTML=siteRenderSite(content,b,site.theme||'editorial',blocks);
+ siteHydrateListings(wrap);wireSitePublic(wrap,b,slug);
+})();}
+
+/* ---------- Embeddable widgets (#w/<type>/<slug>) ---------- */
+function renderWidget(type,slug){return (async function(){
+ var wrap=document.createElement('div');wrap.id='widgetPage';wrap.style.cssText='position:fixed;inset:0;z-index:1500;background:transparent;overflow:auto;font-family:var(--f);color:#15221E';document.body.appendChild(wrap);
+ var brand=null;try{if(sb&&slug){var r=await sb.from('sites').select('content').eq('slug',slug).single();brand=(r.data&&r.data.content&&r.data.content.brand)||null;}}catch(e){}
+ var b=brand||siteBrand();
+ var inner;
+ if(type==='mortgage')inner=widgetMortgage(b);
+ else if(type==='idxsearch')inner=widgetIdxSearch(b);
+ else if(type==='valuation')inner=widgetLeadForm(b,'valuation');
+ else inner=widgetLeadForm(b,'inquiry');
+ wrap.innerHTML='<div style="max-width:520px;margin:0 auto;padding:16px">'+inner+'<div style="text-align:center;margin-top:9px"><span style="font-size:11px;color:#9a9a8e">Powered by Nestava</span></div></div>';
+ widgetWire(wrap,type,slug,b);
+})();}
+function widgetCard(inner,accent){return '<div style="background:#fff;border:1px solid #e6e0d4;border-radius:16px;padding:22px;box-shadow:0 6px 24px rgba(20,32,28,.06)">'+inner+'</div>';}
+function widgetLeadForm(b,kind){var accent=b.accent||'#C2792E';var val=kind==='valuation';
+ var fields=(val?'<input name="address" placeholder="Property address" required style="width:100%;padding:13px;border-radius:9px;border:1px solid #e0dac9;font-family:var(--f);font-size:15px;margin-bottom:10px"/>':'')
+  +'<div style="display:flex;gap:10px;margin-bottom:10px"><input name="name" placeholder="Your name" required style="flex:1;padding:13px;border-radius:9px;border:1px solid #e0dac9;font-family:var(--f);font-size:15px"/><input name="phone" placeholder="Phone" style="flex:1;padding:13px;border-radius:9px;border:1px solid #e0dac9;font-family:var(--f);font-size:15px"/></div>'
+  +'<input name="email" type="email" placeholder="Email" style="width:100%;padding:13px;border-radius:9px;border:1px solid #e0dac9;font-family:var(--f);font-size:15px;margin-bottom:10px"/>'
+  +(val?'':'<textarea name="msg" rows="3" placeholder="What are you looking for?" style="width:100%;padding:13px;border-radius:9px;border:1px solid #e0dac9;font-family:var(--f);font-size:15px;margin-bottom:10px"></textarea>');
+ return widgetCard('<div style="font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:'+accent+'">'+(val?'Home valuation':'Get in touch')+'</div><h3 style="font-size:23px;font-weight:800;margin:5px 0 4px;letter-spacing:-.02em">'+(val?'What’s your home worth?':'Let’s connect')+'</h3><p style="font-size:13.5px;color:#6b6b60;margin:0 0 16px">'+(val?'Get a fast, no-obligation estimate.':'Tell me what you’re looking for and I’ll reply quickly.')+'</p><form id="wForm"><input name="company" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true"/>'+fields+'<button type="submit" style="width:100%;padding:14px;border-radius:9px;border:none;background:'+accent+';color:#fff;font-weight:700;font-size:15px;cursor:pointer;font-family:var(--f)">'+(val?'Get my estimate':'Send')+'</button></form><div id="wOk" style="display:none;padding:18px 4px;font-size:15px;color:#15221E">Thanks — I’ll be in touch shortly. ✨</div>',accent);}
+function widgetMortgage(b){var accent=b.accent||'#C2792E',primary=b.primary||'#0F4C46';
+ return widgetCard('<div style="font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:'+accent+'">Mortgage</div><h3 style="font-size:23px;font-weight:800;margin:5px 0 14px;letter-spacing:-.02em">Payment calculator</h3>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px"><label style="font-size:12px;color:#6b6b60">Home price<input id="wmPrice" type="number" value="450000" style="width:100%;padding:11px;border-radius:9px;border:1px solid #e0dac9;font-family:var(--f);font-size:15px;margin-top:3px"/></label><label style="font-size:12px;color:#6b6b60">Down payment %<input id="wmDown" type="number" value="20" style="width:100%;padding:11px;border-radius:9px;border:1px solid #e0dac9;font-family:var(--f);font-size:15px;margin-top:3px"/></label><label style="font-size:12px;color:#6b6b60">Rate %<input id="wmRate" type="number" step="0.01" value="6.75" style="width:100%;padding:11px;border-radius:9px;border:1px solid #e0dac9;font-family:var(--f);font-size:15px;margin-top:3px"/></label><label style="font-size:12px;color:#6b6b60">Term (yrs)<input id="wmTerm" type="number" value="30" style="width:100%;padding:11px;border-radius:9px;border:1px solid #e0dac9;font-family:var(--f);font-size:15px;margin-top:3px"/></label></div>'
+  +'<div style="background:'+primary+';border-radius:12px;padding:18px;text-align:center;color:#fff"><div style="font-size:12px;opacity:.8;text-transform:uppercase;letter-spacing:.1em">Estimated monthly P&amp;I</div><div id="wmOut" style="font-size:32px;font-weight:800;margin-top:4px">$2,335</div></div><div style="font-size:11px;color:#9a9a8e;margin-top:8px;text-align:center">Estimate only — taxes, insurance & HOA not included.</div>',accent);}
+function widgetIdxSearch(b){var accent=b.accent||'#C2792E';
+ return widgetCard('<div style="font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:'+accent+'">Search</div><h3 style="font-size:23px;font-weight:800;margin:5px 0 12px;letter-spacing:-.02em">Find a home</h3><form id="wSearch" style="display:flex;gap:8px;margin-bottom:14px"><input id="wq" placeholder="City, ZIP or keyword" style="flex:1;padding:13px;border-radius:9px;border:1px solid #e0dac9;font-family:var(--f);font-size:15px"/><button type="submit" style="padding:13px 18px;border-radius:9px;border:none;background:'+accent+';color:#fff;font-weight:700;cursor:pointer;font-family:var(--f)">Search</button></form><div id="wResults" style="display:grid;gap:12px"><div style="text-align:center;color:#8a8a7e;padding:20px"><span class="nspin2"></span> Loading homes…</div></div>',accent);}
+function widgetWire(wrap,type,slug,b){
+ if(type==='mortgage'){var calc=function(){var P=(+document.getElementById('wmPrice').value||0)*(1-(+document.getElementById('wmDown').value||0)/100);var r=(+document.getElementById('wmRate').value||0)/100/12;var n=(+document.getElementById('wmTerm').value||30)*12;var m=r>0?(P*r*Math.pow(1+r,n))/(Math.pow(1+r,n)-1):(P/n);document.getElementById('wmOut').textContent=isFinite(m)?('$'+Math.round(m).toLocaleString()):'—';};['wmPrice','wmDown','wmRate','wmTerm'].forEach(function(id){var el=document.getElementById(id);if(el)el.oninput=calc;});calc();return;}
+ if(type==='idxsearch'){var run=async function(q){var box=document.getElementById('wResults');box.innerHTML='<div style="text-align:center;color:#8a8a7e;padding:20px"><span class="nspin2"></span> Searching…</div>';try{var r=await fetch('/api/mls?action=search&limit=6'+(q?('&q='+encodeURIComponent(q)):''));var j=await r.json();var ls=(j&&j.listings)||[];box.innerHTML=ls.length?ls.map(function(l){return siteListingCard(l,b.accent||'#C2792E');}).join(''):'<div style="text-align:center;color:#8a8a7e;padding:20px">No matches — connect your MLS feed to show live homes.</div>';}catch(e){box.innerHTML='<div style="text-align:center;color:#8a8a7e;padding:20px">Search unavailable right now.</div>';}};var f=document.getElementById('wSearch');if(f)f.onsubmit=function(e){e.preventDefault();run(document.getElementById('wq').value||'');};run('');return;}
+ var form=wrap.querySelector('#wForm');if(form)form.onsubmit=async function(e){e.preventDefault();var ok=document.getElementById('wOk');var addr=(form.address&&form.address.value)||'';var message=type==='valuation'?('Address: '+addr):((form.msg&&form.msg.value)||'');var payload={slug:slug||'',name:(form.name&&form.name.value)||'',phone:(form.phone&&form.phone.value)||'',email:(form.email&&form.email.value)||'',message:message,company:(form.company&&form.company.value)||'',kind:type==='valuation'?'valuation':'inquiry'};var sent=false;try{var r=await fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});var j=await r.json();sent=!!(j&&j.ok);}catch(e2){}form.style.display='none';if(ok){ok.style.display='block';if(!sent)ok.textContent='Thanks! Reach out directly at '+(b.phone||b.email||'')+' if you don’t hear back soon.';}};
+}
+
+/* ---------- Embed code copy (called from the Sites widget cards) ---------- */
+function siteEmbedCode(type){var g=document.getElementById('sitesGrid');var rows=(g&&g._rows)||[];var site=rows.filter(function(s){return s.slug;})[0];
+ if(!site){toast('Create a site first — widgets bind to your account through it');return;}
+ var labels={leadform:'Lead form',valuation:'Home valuation',mortgage:'Mortgage calculator',idxsearch:'IDX search'};
+ var heights={leadform:560,valuation:540,mortgage:560,idxsearch:680};
+ var url=location.origin+location.pathname+'#w/'+type+'/'+site.slug;
+ var code='<iframe src="'+url+'" title="'+(labels[type]||'Widget')+'" loading="lazy" style="width:100%;max-width:540px;height:'+(heights[type]||560)+'px;border:0;border-radius:16px"></iframe>';
+ var m=mktModal('embedModal',560);m.style.display='flex';var c=m.firstChild;
+ c.innerHTML='<div style="padding:22px"><div style="font-size:17px;font-weight:700">Embed · '+(labels[type]||'Widget')+'</div><div class="mut" style="font-size:12.5px;margin:4px 0 12px">Paste this anywhere — Squarespace, WordPress, a brokerage page. '+(type==='mortgage'?'A handy calculator for your visitors.':'Every lead flows straight into your CRM and triggers Speed-to-Lead.')+'</div><textarea id="embTxt" rows="4" style="width:100%;font-family:monospace;font-size:12px;padding:10px;border:1px solid var(--line);border-radius:8px">'+mktEsc(code)+'</textarea><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn btn-ghost btn-sm" id="embOpen">Preview</button><button class="btn btn-ghost btn-sm" id="embClose">Close</button><button class="btn btn-pri btn-sm" id="embCopy">Copy code</button></div></div>';
+ c.querySelector('#embCopy').onclick=function(){try{copyText(code);}catch(e){}toast('Embed code copied');};
+ c.querySelector('#embOpen').onclick=function(){window.open(url,'_blank');};
+ c.querySelector('#embClose').onclick=function(){m.style.display='none';};
+}
+
 var _hydrated=false;
 async function onLogin(session){var l=document.getElementById('landing');if(l)l.style.display='none';showApp(session);wireOrgRename();buildSettings();rebuildProspect();rebuildTransact();if(!_hydrated){_hydrated=true;await hydrate();}await applyOrgStats(session);fillSettings(session);rebuildSites();rebuildMarketing();loadCampaigns();loadTransactions();renderProspectStats();loadBrandKit();rebuildCrm();}
 if((location.hash||'').indexOf('#shoot/')===0){ renderShootPage((location.hash.split('/')[1]||'').trim()); }
 else if((location.hash||'').indexOf('#site/')===0){ renderPublicSite((location.hash.split('/')[1]||'').trim()); }
+else if((location.hash||'').indexOf('#w/')===0){ var _wp=(location.hash||'').split('/'); renderWidget((_wp[1]||'').trim(),(_wp[2]||'').trim()); }
 else{
 buildLanding3();buildOverlay();showLanding();
 if(!sb){showAuth('signin');setNotice('Could not load sign-in. Please refresh.');}
