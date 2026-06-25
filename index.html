@@ -2388,8 +2388,53 @@ function mRenderCoMarketing(){var el=document.getElementById('mCoMktCard');if(!e
  el.querySelector('#loGen').onclick=async function(){var out=document.getElementById('loOut');out.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12.5px"><span class="nspin2"></span>Writing a compliant one-sheet…</div>';var agent={name:(typeof bkVal==='function'?bkVal('agent_name',''):''),brokerage:(typeof bkBrokerage==='function'?bkBrokerage():'')};
   try{var r=await fetch('/api/mortgage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'comarketing',listing:document.getElementById('loListing').value,lo:MORT_LO,agent:agent})});var j=await r.json();if(j&&j.body){out.innerHTML='<div style="border:1px solid var(--line);border-radius:11px;padding:13px;font-size:13.5px;line-height:1.6;white-space:pre-wrap">'+mktEsc(j.body)+'</div><button class="btn btn-ghost btn-sm" id="loCopy" style="margin-top:8px">Copy</button>';var cp=document.getElementById('loCopy');if(cp)cp.onclick=function(){copyText(j.body);toast('Copied');};}else out.innerHTML='<div style="color:var(--danger);font-size:12.5px">Could not generate right now.</div>';}catch(e){out.innerHTML='<div style="color:var(--danger);font-size:12.5px">Could not generate right now.</div>';}};}
 
+/* ===== DEVELOPER / API portal — real key management + docs + webhooks + MCP.
+   rebuildDeveloper() replaces the static block-0 view; called from onLogin. ===== */
+var DEV_KEYS=[],DEV_HOOKS=[];
+var DEV_ENDPOINTS=[
+ ['GET','/v1/contacts','List CRM contacts with scores, stage and last touch.'],
+ ['POST','/v1/contacts','Create a contact (fires Speed-to-Lead if enabled).'],
+ ['GET','/v1/properties','The shared property records behind every surface.'],
+ ['GET','/v1/listings','Search live MLS/IDX listings (normalized).'],
+ ['POST','/v1/leads','Capture a website/partner lead into the CRM.'],
+ ['GET','/v1/transactions','Deals with timelines, documents and compliance.'],
+ ['GET','/v1/reports/{id}','Pull a Buyer Defense / DD report as JSON or PDF.'],
+ ['POST','/v1/marketing/generate','Generate on-brand marketing copy & assets.']
+];
+function devKeyStr(){var a=new Uint8Array(20);(window.crypto||{}).getRandomValues&&crypto.getRandomValues(a);if(!a[0]&&!a[1])for(var z=0;z<20;z++)a[z]=Math.floor(Math.random()*256);return 'sk_live_'+Array.prototype.map.call(a,function(b){return ('0'+b.toString(16)).slice(-2);}).join('');}
+function devMask(k){return k.slice(0,14)+'••••••'+k.slice(-4);}
+
+function rebuildDeveloper(){var v=document.getElementById('view-developer');if(!v)return;
+ v.innerHTML='<div class="ph"><h1>Developer</h1><p>Build on the same data layer the whole platform runs on — one REST API, webhooks, SDKs, and a native MCP server for Claude.</p></div>'
+ +'<div class="grid c2" style="align-items:start">'
+ +'<div><div class="card cp" style="margin-bottom:16px"><div class="sec-t">API keys <button class="btn btn-pri btn-sm" id="devNew" style="margin-left:auto">+ Generate key</button></div><div id="devKeys"></div><div style="font-size:11px;color:var(--muted2);margin-top:10px">Base URL <span class="mono">https://api.nestava.com/v1</span> · authenticate with <span class="mono">Authorization: Bearer sk_live_…</span></div></div>'
+ +'<div class="card cp"><div class="sec-t">Webhooks</div><div class="mut" style="font-size:12px;margin-bottom:10px">Get a POST when things happen in your account.</div><div class="field"><label>Endpoint URL</label><input id="devHookUrl" placeholder="https://your-app.com/webhooks/nestava"/></div><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;font-size:12.5px">'+['lead.created','deal.closed','contact.updated','report.created'].map(function(e){return '<label style="display:flex;align-items:center;gap:5px"><input type="checkbox" class="devEv" value="'+e+'" checked/> <span class="mono">'+e+'</span></label>';}).join('')+'</div><button class="btn btn-ghost btn-sm" id="devHookAdd">Add webhook</button><div id="devHooks" style="margin-top:10px"></div></div></div>'
+ +'<div><div class="card cp" style="margin-bottom:16px"><div class="sec-t">Endpoints</div><div id="devEndpoints"></div></div>'
+ +'<div class="card cp"><div class="sec-t">Connect to Claude (MCP)</div><div class="mut" style="font-size:12.5px;margin-bottom:8px">Add Nestava to any MCP client and let an AI agent work your book directly.</div><pre class="keyrow" style="display:block;white-space:pre-wrap;line-height:1.5">{\n  "mcpServers": {\n    "nestava": {\n      "url": "https://mcp.nestava.com",\n      "headers": { "Authorization": "Bearer sk_live_…" }\n    }\n  }\n}</pre><div class="sec-t" style="margin-top:16px">SDKs</div><div class="keyrow"><span class="mono">npm i @nestava/sdk</span><button class="btn btn-ghost btn-sm" style="margin-left:auto" data-copy="npm i @nestava/sdk">Copy</button></div><div class="keyrow" style="margin-top:8px"><span class="mono">pip install nestava</span><button class="btn btn-ghost btn-sm" style="margin-left:auto" data-copy="pip install nestava">Copy</button></div></div></div>'
+ +'</div>';
+ document.getElementById('devNew').onclick=devGenKey;
+ document.getElementById('devHookAdd').onclick=devAddWebhook;
+ var ep=document.getElementById('devEndpoints');ep.innerHTML=DEV_ENDPOINTS.map(function(e){var col=e[0]==='GET'?'var(--good)':'var(--amber)';return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line2)"><span class="mono" style="font-size:11px;font-weight:700;color:'+col+';min-width:42px">'+e[0]+'</span><span class="mono" style="font-size:12.5px;color:#13241f">'+e[1]+'</span><span style="font-size:11.5px;color:var(--muted);margin-left:auto;text-align:right;max-width:55%">'+e[2]+'</span></div>';}).join('');
+ v.querySelectorAll('[data-copy]').forEach(function(b){b.onclick=function(){copyText(b.dataset.copy);toast('Copied');};});
+ devLoad();}
+
+async function devLoad(){try{var k=await sb.from('api_keys').select('*').order('created_at',{ascending:false});DEV_KEYS=k.data||[];}catch(e){}try{var w=await sb.from('webhooks').select('*').order('created_at',{ascending:false});DEV_HOOKS=w.data||[];}catch(e){}devRenderKeys();devRenderHooks();}
+function devRenderKeys(){var el=document.getElementById('devKeys');if(!el)return;if(!DEV_KEYS.length){el.innerHTML='<div class="mut" style="font-size:13px;padding:8px 0">No keys yet. Generate one to start building.</div>';return;}
+ el.innerHTML=DEV_KEYS.map(function(k){return '<div class="keyrow" style="margin-top:8px"><div><div style="font-weight:600;font-size:13px;font-family:var(--f)">'+mktEsc(k.label||'Key')+'</div><div class="mono" style="font-size:12px;color:var(--muted)">'+mktEsc(k.display||'')+'</div></div><button class="btn btn-ghost btn-sm" data-revoke="'+k.id+'" style="margin-left:auto;color:var(--danger)">Revoke</button></div>';}).join('');
+ el.querySelectorAll('[data-revoke]').forEach(function(b){b.onclick=async function(){if(!confirm('Revoke this key? Apps using it will stop working.'))return;try{await sb.from('api_keys').delete().eq('id',b.dataset.revoke);}catch(e){}toast('Key revoked');devLoad();};});}
+function devRenderHooks(){var el=document.getElementById('devHooks');if(!el)return;if(!DEV_HOOKS.length){el.innerHTML='';return;}
+ el.innerHTML=DEV_HOOKS.map(function(w){return '<div class="keyrow" style="margin-top:8px"><div style="min-width:0"><div class="mono" style="font-size:12px;color:#13241f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+mktEsc(w.url||'')+'</div><div style="font-size:11px;color:var(--muted)">'+mktEsc(w.events||'')+'</div></div><button class="btn btn-ghost btn-sm" data-delhook="'+w.id+'" style="margin-left:auto;color:var(--danger)">Delete</button></div>';}).join('');
+ el.querySelectorAll('[data-delhook]').forEach(function(b){b.onclick=async function(){try{await sb.from('webhooks').delete().eq('id',b.dataset.delhook);}catch(e){}toast('Webhook removed');devLoad();};});}
+
+function devGenKey(){var label=prompt('Name this key (e.g., "Production", "Zapier"):');if(label===null)return;label=label.trim()||'API key';var key=devKeyStr();var disp=devMask(key);
+ (async function(){try{await sb.from('api_keys').insert({label:label,display:disp,scopes:'read'});}catch(e){}await devLoad();
+  var m=mktModal('devKeyModal',520);m.style.display='flex';var c=m.firstChild;c.innerHTML='<div style="padding:22px"><div style="font-size:17px;font-weight:700">Your new API key</div><div class="mut" style="font-size:12.5px;margin:4px 0 12px">Copy it now — for security we only store a masked version, so you won’t see the full key again.</div><div class="keyrow" style="word-break:break-all"><span class="mono" id="devKeyFull">'+key+'</span></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn btn-ghost btn-sm" id="devKeyClose">Done</button><button class="btn btn-pri btn-sm" id="devKeyCopy">Copy key</button></div></div>';
+  c.querySelector('#devKeyCopy').onclick=function(){copyText(key);toast('Key copied');};c.querySelector('#devKeyClose').onclick=function(){m.style.display='none';};
+ })();}
+async function devAddWebhook(){var url=(document.getElementById('devHookUrl').value||'').trim();if(!/^https?:\/\//i.test(url)){toast('Enter a valid https URL');return;}var evs=[].slice.call(document.querySelectorAll('.devEv:checked')).map(function(x){return x.value;}).join(', ');try{await sb.from('webhooks').insert({url:url,events:evs||'lead.created',active:true});}catch(e){}document.getElementById('devHookUrl').value='';toast('Webhook added');devLoad();}
+
 var _hydrated=false;
-async function onLogin(session){var l=document.getElementById('landing');if(l)l.style.display='none';showApp(session);wireOrgRename();buildSettings();rebuildProspect();rebuildTransact();if(!_hydrated){_hydrated=true;await hydrate();}await applyOrgStats(session);fillSettings(session);rebuildSites();rebuildMortgage();rebuildMarketing();loadCampaigns();loadTransactions();renderProspectStats();loadBrandKit();rebuildCrm();}
+async function onLogin(session){var l=document.getElementById('landing');if(l)l.style.display='none';showApp(session);wireOrgRename();buildSettings();rebuildProspect();rebuildTransact();if(!_hydrated){_hydrated=true;await hydrate();}await applyOrgStats(session);fillSettings(session);rebuildSites();rebuildMortgage();rebuildDeveloper();rebuildMarketing();loadCampaigns();loadTransactions();renderProspectStats();loadBrandKit();rebuildCrm();}
 if((location.hash||'').indexOf('#shoot/')===0){ renderShootPage((location.hash.split('/')[1]||'').trim()); }
 else if((location.hash||'').indexOf('#site/')===0){ renderPublicSite((location.hash.split('/')[1]||'').trim()); }
 else if((location.hash||'').indexOf('#w/')===0){ var _wp=(location.hash||'').split('/'); renderWidget((_wp[1]||'').trim(),(_wp[2]||'').trim()); }
